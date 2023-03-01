@@ -1,5 +1,7 @@
 module RenewalInference
 
-# Write your package code here.
+    include("model.jl")
+
+    export RenewalModel
 
 end
