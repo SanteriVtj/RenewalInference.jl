@@ -1,7 +1,9 @@
 module RenewalInference
 
     include("model.jl")
+    include("single_country.jl")
 
-    export RenewalModel
+    export RenewalModel, 
+        single_country!
 
 end

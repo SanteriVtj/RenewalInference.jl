@@ -1,14 +1,5 @@
 using RenewalInference
-using Test
+using Test, SafeTestsets
 
-@testset "Model object" begin
-    @test let 
-        model = RenewalModel{Int64}(
-            rand(1:20, 1500),
-            20,
-            100,
-            rand(5)
-        );
-        typeof(model) == RenewalModel{Int64}
-    end
-end
+@safetestset "Tests for model struct" begin include("model_tests.jl") end
+@safetestset "Tests for single country inference" begin include("single_country_tests.jl") end
