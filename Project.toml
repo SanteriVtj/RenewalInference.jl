@@ -1,6 +1,6 @@
 name = "RenewalInference"
 uuid = "a4ee2418-3667-4893-ad35-afdd55530a8f"
-authors = ["Satnteri Väätäjä"]
+authors = ["Santeri Väätäjä"]
 version = "0.1.0"
 
 [deps]
