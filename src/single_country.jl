@@ -1,4 +1,4 @@
-function single_country!(model::RenewalModel, error_function=msd)
+function single_country!(model::RenewalModel, param::V, error_function=msd) where {V<:AbstractVector}
     """
     single_country!
 
@@ -6,22 +6,24 @@ function single_country!(model::RenewalModel, error_function=msd)
     By passing this to optimizer one can 
     ...
     # Arguments
-    - `model::RenewalModel`: data and parameters.
+    - `model::RenewalModel`: data struct for necessary data.
+    - `param::V`: parameter vector.
     - `error_function`: preferred error function.
     ...
     """
-    δ = model.param[1]
-    θ = model.param[2]
-    ϕ = model.param[3]
-    σ = model.param[4]
-    γ = model.param[5]
+    
+    δ = param[1]
+    θ = param[2]
+    ϕ = param[3]
+    σ = param[4]
+    γ = param[5]
 
     expiration = model.expiration
     r̄ = model.fees
-    T = model.T
-    P = model.max_time
+    T = model.max_time
+    draw = model.draw
 
     
-    error_function(expiration, hz_model)
+    @SVector error_function(expiration, hz_model)
 end
 
