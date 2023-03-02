@@ -7,7 +7,8 @@ using Test
             rand(1:20, 1500),
             rand(20),
             20,
-            rand(5)
+            rand(5),
+            .05
         );
         typeof(model) == RenewalModel{Int64}
     end
@@ -16,6 +17,7 @@ using Test
         rand(1:20, 1500),
         rand(21),
         20,
-        rand(5)
+        rand(5),
+        .05
     )
 end
