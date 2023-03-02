@@ -3,6 +3,7 @@ struct RenewalModel{T<:Number}
     fees::Vector{Float64}
     max_time::T
     draw::Vector{Float64}
+    ν::Float64
 
     function RenewalModel{T}(expiration, fees, max_time, draw) where T<:Number
         if max_time != first(size(fees))
