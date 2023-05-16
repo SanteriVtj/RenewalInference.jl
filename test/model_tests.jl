@@ -3,21 +3,10 @@ using Test
 
 @testset "Model object" begin
     @test let 
-        model = RenewalModel{Int64}(
-            rand(1:20, 1500),
-            rand(20),
-            20,
-            rand(20),
-            .05
+        model = RenewalModel(
+            1,
+            .5
         );
-        typeof(model) == RenewalModel{Int64}
+        typeof(model) == RenewalModel
     end
-
-    @test_throws ErrorException("Fees need to be defined for each period") RenewalModel{Int64}(
-        rand(1:20, 1500),
-        rand(21),
-        20,
-        rand(20),
-        .05
-    )
 end
