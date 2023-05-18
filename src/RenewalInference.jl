@@ -3,9 +3,10 @@ module RenewalInference
     using StatsBase, StaticArrays
 
     include("model.jl")
-    include("single_country.jl")
+    include("normalhz.jl")
 
     export RenewalModel,
-        single_country!
+        simulate_normhz,
+        normhz
 
 end
