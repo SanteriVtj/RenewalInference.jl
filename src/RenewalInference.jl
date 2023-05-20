@@ -1,11 +1,12 @@
 module RenewalInference
 
-    using StatsBase, StaticArrays
+    using StatsBase, StaticArrays, Distributions, 
+        QuasiMonteCarlo, Random
 
     include("model.jl")
     include("normalhz.jl")
 
-    export RenewalModel,
+    export NormModel,
         simulate_normhz,
         normhz
 
