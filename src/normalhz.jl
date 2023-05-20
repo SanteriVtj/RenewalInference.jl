@@ -1,5 +1,3 @@
-using Distributions, StatsBase, QuasiMonteCarlo, Random
-
 function simulate_normhz(par, d=Nothing, seed=123, 
     z=100, lb=0, ub=1, sample_method=SobolSample())
     Random.seed!(seed)
@@ -28,18 +26,18 @@ function simulate_normhz(par, d=Nothing, seed=123,
         )
 end
 
-function normhz(x, par)
+function normhz(x, data, par)
     μ=x[1];σ=x[2];
-    ν=par.ν;n=par.n;c=par.c;y=par.y;z=par.z;
+    ν=par.ν;n=par.n;c=par.c;
+    y=data[1];z=data[2];
 
-    z = μ+z*σ
-    r_d = (z.-c).≥0
+    z = μ.+z*σ
     
-    ℓ = cumprod(1 ./(1+exp(-(z.-c)/ν)), dims=2)
-
-    survive = sum(ℓ)
-
+    ℓ = cumprod(1 ./(1 .+exp.(-(repeat(z,1,length(c)).-c')/ν)), dims=2)
+    survive = sum(ℓ,dims=1)
     ℓ = n.-survive
-    ℓ = ℓ.-[0;ℓ[1:length(ℓ)-1]]
+    ℓ = ℓ.-vcat(0, ℓ[1:length(ℓ)-1])'
+    ŷ = (ℓ ./ vcat(n, survive[1:end-1])')'
 
+    ((y[1:end-1].-ŷ)'*(y[1:end-1].-ŷ))[1]
 end
