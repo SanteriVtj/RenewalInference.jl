@@ -3,10 +3,7 @@ using Test
 
 @testset "Model object" begin
     @test let 
-        model = RenewalModel(
-            1,
-            .5
-        );
-        typeof(model) == RenewalModel
+        m=RenewalModel(50,10,100,collect(35:5:65));
+        typeof(m) == RenewalModel
     end
 end
