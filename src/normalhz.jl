@@ -1,5 +1,12 @@
 function simulate_normhz(par, d=Nothing, seed=123, 
-    z=100, lb=0, ub=1, sample_method=SobolSample())
+    z=100, lb=0, ub=1, 
+    sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2))
+    """
+    simulate_normhz(par, d=Nothing, seed=123, z=100, lb=0, ub=1, sample_method=SobolSample())
+
+        Function to generate very simple hazard rate data for normally distributed data. Generates N(μ,σ) distributed sample and copies every n rows to |c| columns to generate n×|c| matrix. then applies cost vector c to test how "long" each row would "survive".
+        # Arguments
+    """
     Random.seed!(seed)
     μ=par.μ;σ=par.σ;n=par.n;c=par.c
     if d == Nothing
@@ -26,14 +33,14 @@ function simulate_normhz(par, d=Nothing, seed=123,
         )
 end
 
-function normhz(x, data, par)
+function normhz(x::Vector{T}, y::Vector{T}, z::Vector{T}, par::NormModel) where T<:Number
     μ=x[1];σ=x[2];
     ν=par.ν;n=par.n;c=par.c;
-    y=data[1];z=data[2];
 
     z = μ.+z*σ
     
-    ℓ = cumprod(1 ./(1 .+exp.(-(repeat(z,1,length(c)).-c')/ν)), dims=2)
+    temp = repeat(z,1,length(c))
+    ℓ = cumprod(1 ./(1 .+exp.(-(temp.-c')/ν)), dims=2)
     survive = sum(ℓ,dims=1)
     ℓ = n.-survive
     ℓ = ℓ.-vcat(0, ℓ[1:length(ℓ)-1])'
