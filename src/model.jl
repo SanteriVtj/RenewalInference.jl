@@ -1,7 +1,7 @@
-struct NormModel
-    μ::Float64
-    σ::Float64
+struct NormModel{T<:Real}
+    μ::Real
+    σ::Real
     n::Int64
-    c::Vector{Real}
+    c::Vector{T}
     ν::Float64
 end
