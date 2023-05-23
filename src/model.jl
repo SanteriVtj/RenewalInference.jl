@@ -3,5 +3,5 @@ struct NormModel{T<:Real}
     σ::Real
     n::Int64
     c::Vector{T}
-    ν::Float64
+    ν::Real
 end
