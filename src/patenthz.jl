@@ -45,7 +45,7 @@ function simulate_patenthz(par::PatentModel, x, s)
         r[:,t] .= s[:,t-1].*maximum(hcat(δ.*r[:,t-1], learning[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
         r[r_d[:,t-1] .== 0,t] .= 0
-        # 
+        # Patent is kept active if its value exceed the threshold o.w. set to zero
         r_d[:,t] .= r[:,t] .≥ threshold[t]
     end
 
