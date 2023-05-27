@@ -41,8 +41,11 @@ function simulate_patenthz(par::PatentModel, x, s)
 
     # Computing patent values for t=2,…,T
     for t=2:T
+        # compute patent value at t by maximizing between learning shocks and depreciation
         r[:,t] .= s[:,t-1].*maximum(hcat(δ.*r[:,t-1], learning[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
+        # If patent wasn't active in t-1 it cannot be active in t
         r[r_d[:,t-1] .== 0,t] .= 0
+        # 
         r_d[:,t] .= r[:,t] .≥ threshold[t]
     end
 
