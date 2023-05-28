@@ -1,5 +1,27 @@
-function patenthz(par::PatentModel, x)
+function patenthz(par::PatentModel, hz, s, o)
+    """
+
+    # Arguments
+    par::PatentModel: struct containing parameters for the distribution of patent exirations.
+    s: Simulation draw.
+    o: obsolence draw.
+    """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
+
+     th = thresholds(par)
+
+    S = length(s)
+    T = length(hz)
+
+    r = zeros(eltype(s), S, T)
+    r_d = falses(S, T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
+
+     # Conversion of mean and variance for log normal distribution according to the normal specification
+     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
+     e_var = e_mean.^2
+ 
+     μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
+     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
 end
 
 function simulate_patenthz(par::PatentModel, x, s)
@@ -14,7 +36,7 @@ function simulate_patenthz(par::PatentModel, x, s)
         s: obsolence draw. Also U([0,1]) distributed random matrix.
     """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
-    threshold = collect(35:5:80)
+    th = threshold(par)
 
     n, T = size(x)
     q = @view x[:,1]
@@ -33,7 +55,7 @@ function simulate_patenthz(par::PatentModel, x, s)
     obsolence = zeros(n,T-1)
 
     r[:,1] .= quantile.(LogNormal(μ[1], σ[1]), q)
-    r_d[:,1] .= r[:,1] .≥ threshold[1]
+    r_d[:,1] .= r[:,1] .≥ th[1]
 
     # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
     learning = quantile.(LogNormal.(μ[2:end], σ[2:end]), z')'
@@ -46,8 +68,12 @@ function simulate_patenthz(par::PatentModel, x, s)
         # If patent wasn't active in t-1 it cannot be active in t
         r[r_d[:,t-1] .== 0,t] .= 0
         # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] .= r[:,t] .≥ threshold[t]
+        r_d[:,t] .= r[:,t] .≥ th[t]
     end
 
     (r, r_d)
+end
+
+function thresholds(par)
+    collect(35:5:80)
 end
