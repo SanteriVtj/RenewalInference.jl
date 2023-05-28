@@ -16,7 +16,8 @@ module RenewalInference
         PatentModel,
         simulate_patenthz,
         patenthz,
-        runpatent
+        runpatent,
+        runpm
     else    
         export NormModel,
             simulate_normhz,
