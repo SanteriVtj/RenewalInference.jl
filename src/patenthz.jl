@@ -3,12 +3,13 @@ function patenthz(par::PatentModel, hz, s, o)
 
     # Arguments
     par::PatentModel: struct containing parameters for the distribution of patent exirations.
+    hz: Empirical hazard rates.
     s: Simulation draw.
-    o: obsolence draw.
+    o: Obsolence draw.
     """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
 
-     th = thresholds(par)
+    th = thresholds(par)
 
     S = length(s)
     T = length(hz)
@@ -75,5 +76,5 @@ function simulate_patenthz(par::PatentModel, x, s)
 end
 
 function thresholds(par)
-    collect(35:5:80)
+    collect(Float64, 35:5:80)
 end
