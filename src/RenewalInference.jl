@@ -6,6 +6,7 @@ module RenewalInference
     include("model.jl")
     include("normalhz.jl")
     include("patenthz.jl")
+    include("hz_functions.jl")
     if pwd()=="C:\\Users\\Santeri\\.julia\\dev\\RenewalInference" include("runmodel.jl") end
 
     if pwd()=="C:\\Users\\Santeri\\.julia\\dev\\RenewalInference"
@@ -17,7 +18,8 @@ module RenewalInference
         simulate_patenthz,
         patenthz,
         runpatent,
-        runpm
+        runpm,
+        computehz
     else    
         export NormModel,
             simulate_normhz,
