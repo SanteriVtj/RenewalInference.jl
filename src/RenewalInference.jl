@@ -4,13 +4,15 @@ module RenewalInference
         QuasiMonteCarlo, Random
 
     include("model.jl")
+    include("threshold.jl")
     include("normalhz.jl")
     include("patenthz.jl")
     include("hz_functions.jl")
-    include("threshold.jl")
-    if pwd()=="C:\\Users\\Santeri\\.julia\\dev\\RenewalInference" include("runmodel.jl") end
-
-    if pwd()=="C:\\Users\\Santeri\\.julia\\dev\\RenewalInference"
+    
+    if pwd()=="C:\\Users\\Santeri\\.julia\\dev\\RenewalInference" 
+        
+        include("runmodel.jl") 
+        
         export NormModel,
         simulate_normhz,
         normhz,
