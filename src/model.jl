@@ -12,4 +12,5 @@ struct PatentModel
     γ::Float64
     δ::Float64
     θ::Float64
+    ν::Float64
 end
