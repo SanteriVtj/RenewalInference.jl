@@ -1,4 +1,4 @@
-function patenthz(par::PatentModel, hz, s, o)
+function patenthz(par::PatentModel, hz, s, o, c)
     """
 
     # Arguments
@@ -9,7 +9,7 @@ function patenthz(par::PatentModel, hz, s, o)
     """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;ν=par.ν;
 
-    r̄ = thresholds(par)
+    r̄ = thresholds(par, c)
 
     S = length(s)
     T = length(hz)-1
@@ -42,10 +42,10 @@ function patenthz(par::PatentModel, hz, s, o)
         ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    modelhz(sum(ℓ, dims=1)', S)
+    modelhz(sum(ℓ', dims=2), S)
 end
 
-function simulate_patenthz(par::PatentModel, x, s)
+function simulate_patenthz(par::PatentModel, x, s, c)
     """
     simulate_patenthz(par::PatentModel, x)
 
@@ -57,7 +57,7 @@ function simulate_patenthz(par::PatentModel, x, s)
         s: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1
     """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
-    th = thresholds(par)
+    th = thresholds(par, c)
 
     n, T = size(x)
     m, k = size(s)

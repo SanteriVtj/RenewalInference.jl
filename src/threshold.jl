@@ -1,3 +1,7 @@
-function thresholds(par)
-    [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995]
+function thresholds(par, c, step=5)
+    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
+    
+    r_up = maximum(c)+step
+    r1 = 0:step:r_up
+    
 end
