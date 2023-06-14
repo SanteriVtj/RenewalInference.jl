@@ -17,12 +17,7 @@ function patenthz(par::PatentModel, hz, s, o, c)
 
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
 
-    # Conversion of mean and variance for log normal distribution according to the normal specification
-    e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
-    e_var = e_mean.^2
- 
-    μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
-    σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
+    μ, σ = log_norm_parametrisation(par, T)
 
     s = exp.(s.*σ'.+μ')
     r[:,1] = s[:,1]
@@ -42,7 +37,7 @@ function patenthz(par::PatentModel, hz, s, o, c)
         ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    modelhz(sum(ℓ', dims=2), S)
+    modelhz(sum(ℓ', dims=1), S)
 end
 
 function simulate_patenthz(par::PatentModel, x, s, c)
@@ -67,12 +62,7 @@ function simulate_patenthz(par::PatentModel, x, s, c)
     @assert length(th) == T == k+1 "Dimension mismatch in time"
     @assert n == m "Dimension mismatch in the size of sample between x and s"
 
-    # Conversion of mean and variance for log normal distribution according to the normal specification
-    e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
-    e_var = e_mean.^2
-
-    μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
-    σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
+    μ, σ = log_norm_parametrisation(par, T)
 
     # Zero matrix for patent values and active patent periods
     r = zeros(n,T)
@@ -102,4 +92,16 @@ end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
+function log_norm_parametrisation(par::PatentModel, T) 
+    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;
+
+    # Conversion of mean and variance for log normal distribution according to the normal specification
+    e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
+    e_var = e_mean.^2
+
+    μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
+    σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
+
+    (μ, σ)
+end
 

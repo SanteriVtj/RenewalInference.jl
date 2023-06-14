@@ -23,7 +23,8 @@ module RenewalInference
         runpatent,
         runpm,
         computehz,
-        thresholds
+        thresholds,
+        log_norm_parametrisation
     else    
         export NormModel,
             simulate_normhz,
