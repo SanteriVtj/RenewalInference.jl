@@ -1,4 +1,7 @@
-function patenthz(par::PatentModel, hz, s, o, c)
+function patenthz(
+    par::PatentModel, hz, s, o, c, N=1000, 
+    sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2)
+)
     """
 
     # Arguments
@@ -9,13 +12,30 @@ function patenthz(par::PatentModel, hz, s, o, c)
     """
     ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;ν=par.ν;
 
-    r̄ = thresholds(par, c)
+    @assert size(s, 2) "Sample should be N×1, not N×M"
 
     S = length(s)
     T = length(hz)-1
     r = zeros(S,T)
-
+    
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
+    
+    z = QuasiMonteCarlo.sample(
+        N,
+        0,
+        1,
+        sample_method
+    )
+    o2 = reshape(
+        QuasiMonteCarlo.sample(
+            N*T,
+            0,
+            1,
+            sample_method
+        ),
+        (N,T)
+    )
+    r̄ = thresholds(par, c, z, o2)
 
     μ, σ = log_norm_parametrisation(par, T)
 
