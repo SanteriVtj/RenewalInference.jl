@@ -27,11 +27,11 @@ function thresholds(par, c, z, o, increment=5)
     for t=T-1:-1:1
         temp1 = repeat(δ.*r1', N)
         temp2 = repeat(z[:,t],1,ngrid)
-        temp3 = repeat(s[:,t],1,ngrid)
-        interp = linear_interpolation(r1, V(:,t))
+        temp3 = repeat(o[:,t],1,ngrid)
+        interp = linear_interpolation(r1, V[:,t])
         temp4 = interp(temp3.*maximum([temp1;;;temp2], dims=3))
         temp5 = 1/N.*ones(1,N)*temp4
-        V[t,:] = r1.-c(t).+β.*temp5
+        V[t,:] = r1.-c[t].+β.*temp5
         idx = findfirst(V[T,:].>0)
         r̄[t] = idx == 1 ? 0 : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
         V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
