@@ -1,5 +1,5 @@
 function patenthz(
-    par::PatentModel, hz, s, o, c, N=1000, 
+    par::PatentModel, hz, s, o, c,
     sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2)
 )
     """
@@ -60,7 +60,9 @@ function patenthz(
     modelhz(sum(ℓ', dims=1), S)
 end
 
-function simulate_patenthz(par::PatentModel, x, s, c)
+function simulate_patenthz(par::PatentModel, x, s, c,
+    sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2)
+)
     """
     simulate_patenthz(par::PatentModel, x)
 
@@ -71,14 +73,35 @@ function simulate_patenthz(par::PatentModel, x, s, c)
         x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
         s: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1
     """
-    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
-    th = thresholds(par, c)
-
+    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;N=par.N;
+    
     n, T = size(x)
     m, k = size(s)
     q = @view x[:,1]
     z = @view x[:,2:end]
 
+    ishocks = reshape(
+        QuasiMonteCarlo.sample(
+            N*T,
+            0,
+            1,
+            sample_method
+        ),
+        (N,T)
+    )
+
+    o = reshape(
+        QuasiMonteCarlo.sample(
+            N*(T-1),
+            0,
+            1,
+            sample_method
+        ),
+        (N,T-1)
+    )
+    
+    th = thresholds(par, c, ishocks, o)
+    
     @assert length(th) == T == k+1 "Dimension mismatch in time"
     @assert n == m "Dimension mismatch in the size of sample between x and s"
 
