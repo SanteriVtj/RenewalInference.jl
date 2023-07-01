@@ -1,40 +1,24 @@
 function patenthz(
-    par::PatentModel, hz, s, o, c,
-    sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2)
+    par::Vector{Float64}, hz, s, o, c, z, o2
 )
     """
 
     # Arguments
-    par::PatentModel: struct containing parameters for the distribution of patent exirations.
+    par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
     hz: Empirical hazard rates.
     s: Simulation draw.
     o: Obsolence draw.
+    c: Renewal costs for patents.
+    z: Initial shocks for inner loop simulation. Random or quasirandom draw of size N.
+    o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
-    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;ν=par.ν;
-
-    @assert size(s, 2) "Sample should be N×1, not N×M"
+    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
 
     S = length(s)
     T = length(hz)-1
     r = zeros(S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
-    
-    z = QuasiMonteCarlo.sample(
-        N,
-        0,
-        1,
-        sample_method
-    )
-    o2 = reshape(
-        QuasiMonteCarlo.sample(
-            N*T,
-            0,
-            1,
-            sample_method
-        ),
-        (N,T)
-    )
     r̄ = thresholds(par, c, z, o2)
 
     μ, σ = log_norm_parametrisation(par, T)
@@ -57,11 +41,11 @@ function patenthz(
         ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    modelhz(sum(ℓ', dims=1), S)
+    ehz=modelhz(sum(ℓ', dims=1), S)
+    (ehz'*ehz)[1]
 end
 
-function simulate_patenthz(par::PatentModel, x, s, c,
-    sample_method::QuasiMonteCarlo.SamplingAlgorithm=LowDiscrepancySample(2)
+function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
 )
     """
     simulate_patenthz(par::PatentModel, x)
@@ -71,35 +55,14 @@ function simulate_patenthz(par::PatentModel, x, s, c,
         # Arguments:
         par::PatentModel: struct containing parameters for the distribution of patent exirations.
         x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
-        s: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1
+        o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
     """
-    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;N=par.N;
+    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
     
     n, T = size(x)
     m, k = size(s)
     q = @view x[:,1]
     z = @view x[:,2:end]
-
-    ishocks = reshape(
-        QuasiMonteCarlo.sample(
-            N*T,
-            0,
-            1,
-            sample_method
-        ),
-        (N,T)
-    )
-
-    o = reshape(
-        QuasiMonteCarlo.sample(
-            N*(T-1),
-            0,
-            1,
-            sample_method
-        ),
-        (N,T-1)
-    )
-    
     th = thresholds(par, c, ishocks, o)
     
     @assert length(th) == T == k+1 "Dimension mismatch in time"
@@ -117,7 +80,7 @@ function simulate_patenthz(par::PatentModel, x, s, c,
 
     # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
     learning = quantile.(LogNormal.(μ[2:end], σ[2:end]), z')'
-    obsolence .= s .≤ θ
+    obsolence .= o .≤ θ
 
     # Computing patent values for t=2,…,T
     @inbounds for t=2:T
@@ -135,8 +98,8 @@ end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
-function log_norm_parametrisation(par::PatentModel, T) 
-    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;
+function log_norm_parametrisation(par, T) 
+    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
@@ -147,4 +110,3 @@ function log_norm_parametrisation(par::PatentModel, T)
 
     (μ, σ)
 end
-
