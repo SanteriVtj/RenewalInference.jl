@@ -1,10 +1,10 @@
 function thresholds(par, c, z, o, increment=5)
-    ϕ=par.ϕ;σⁱ=par.σⁱ;γ=par.γ;δ=par.δ;θ=par.θ;
+    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
     T = length(c)
     N = length(z)
 
     r_up = maximum(c)+increment
-    r1 = 0:increment:r_up
+    r1 = collect(Float64, 0:increment:r_up)
     ngrid = length(r1)
 
     V = zeros(T, ngrid)
@@ -28,12 +28,12 @@ function thresholds(par, c, z, o, increment=5)
         temp1 = repeat(δ.*r1', N)
         temp2 = repeat(z[:,t],1,ngrid)
         temp3 = repeat(o[:,t],1,ngrid)
-        interp = linear_interpolation(r1, V[:,t])
-        temp4 = interp(temp3.*maximum([temp1;;;temp2], dims=3))
+        interp = linear_interpolation(r1, view(V, t+1, :), extrapolation_bc=Line())
+        temp4 = interp.(dropdims(temp3.*maximum([temp1;;;temp2], dims=3), dims=3))
         temp5 = 1/N.*ones(1,N)*temp4
-        V[t,:] = r1.-c[t].+β.*temp5
-        idx = findfirst(V[T,:].>0)
-        r̄[t] = idx == 1 ? 0 : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
+        V[t,:] = r1'.-c[t].+β.*temp5
+        idx = findfirst(V[t,:].>0)
+        r̄[t] = idx == 1 ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
         V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
     end
     r̄
