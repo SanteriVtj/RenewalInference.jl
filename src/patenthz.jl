@@ -1,5 +1,5 @@
 function patenthz(
-    par::Vector{Float64}, hz, s, o, c, z, o2
+    par::Vector{Float64}, hz, initial_shock, obsolence, costs
 )
     """
 
@@ -14,19 +14,19 @@ function patenthz(
     """
     ϕ, σⁱ, γ, δ, θ, β, ν, N = par
 
-    S = length(s)
+    S = length(initial_shock)
     T = length(hz)-1
     r = zeros(S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
-    r̄ = thresholds(par, c, z, o2)
+    r̄ = thresholds(par, costs, initial_shock, obsolence)
 
     μ, σ = log_norm_parametrisation(par, T)
 
-    s = exp.(s.*σ'.+μ')
+    s = exp.(initial_shock.*σ'.+μ')
     r[:,1] = s[:,1]
     r_d[:,1] = r[:,1] .≥ r̄[1]
-    obsolence = o .≥ θ
+    obsolence = obsolence .≥ θ
 
     ℓ = zeros(size(r))
     ℓ[:,1] = 1 ./(1 .+exp.(r[:,1]./ν))
@@ -60,13 +60,11 @@ function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
     ϕ, σⁱ, γ, δ, θ, β, ν, N = par
     
     n, T = size(x)
-    m, k = size(s)
     q = @view x[:,1]
     z = @view x[:,2:end]
     th = thresholds(par, c, ishocks, o)
     
-    @assert length(th) == T == k+1 "Dimension mismatch in time"
-    @assert n == m "Dimension mismatch in the size of sample between x and s"
+    @assert length(th) == T "Dimension mismatch in time"
 
     μ, σ = log_norm_parametrisation(par, T)
 
