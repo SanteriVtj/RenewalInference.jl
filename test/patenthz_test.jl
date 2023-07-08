@@ -6,7 +6,6 @@
         simulation_shocks = reshape(QuasiMonteCarlo.sample(N*T,0,1,LowDiscrepancySample(2)),(N,T));
         obsolence = reshape(QuasiMonteCarlo.sample(N*(T-1),0,1,LowDiscrepancySample(2)), (N,T-1));
         ishocks = QuasiMonteCarlo.sample(N,0,1,LowDiscrepancySample(2));
-        o2 = reshape(QuasiMonteCarlo.sample(N*T,0,1,LowDiscrepancySample(2)), (N,T));
         
         x=simulate_patenthz(
             simulation_shocks, 
