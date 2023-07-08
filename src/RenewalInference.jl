@@ -1,7 +1,7 @@
 module RenewalInference
 
     using StatsBase, StaticArrays, Distributions, 
-        QuasiMonteCarlo, Random, Interpolations
+        QuasiMonteCarlo, Random, Interpolations, DualNumbers
 
     include("model.jl")
     include("threshold.jl")
