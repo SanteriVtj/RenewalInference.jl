@@ -26,14 +26,14 @@ function patenthz(
     s = exp.(initial_shock.*σ'.+μ')
     r[:,1] = s[:,1]
     r_d[:,1] = r[:,1] .≥ r̄[1]
-    obsolence = obsolence .≥ θ
+    o = obsolence .≥ θ
 
     ℓ = zeros(size(r))
     ℓ[:,1] = 1 ./(1 .+exp.(r[:,1]./ν))
 
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= obsolence[:,t-1].*maximum(hcat(δ.*r[:,t-1], s[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
+        r[:,t] .= o[:,t-1].*maximum(hcat(δ.*r[:,t-1], s[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
         r[r_d[:,t-1] .== 0,t] .= 0
         # Patent is kept active if its value exceed the threshold o.w. set to zero
@@ -41,8 +41,8 @@ function patenthz(
         ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    ehz=modelhz(sum(ℓ', dims=1), S)
-    (ehz'*ehz)[1]
+    # ehz=modelhz(sum(ℓ', dims=1), S)
+    # (ehz'*ehz)[1]
 end
 
 function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
