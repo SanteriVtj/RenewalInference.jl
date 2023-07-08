@@ -1,5 +1,5 @@
 function patenthz(
-    par::Vector{Float64}, hz, initial_shock, obsolence, costs
+    par, hz, initial_shock, obsolence, costs
 )
     """
 
@@ -12,7 +12,7 @@ function patenthz(
     z: Initial shocks for inner loop simulation. Random or quasirandom draw of size N.
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
-    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
+    ϕ, σⁱ, γ, δ, θ, β, ν = par
 
     S = length(initial_shock)
     T = length(hz)-1
@@ -41,8 +41,8 @@ function patenthz(
         ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    # ehz=modelhz(sum(ℓ', dims=1), S)
-    # (ehz'*ehz)[1]
+    ehz=modelhz(sum(ℓ', dims=1), S)
+    (ehz'*ehz)[1]
 end
 
 function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
@@ -57,7 +57,7 @@ function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
         x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
         o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
     """
-    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
+    ϕ, σⁱ, γ, δ, θ, β, ν = par
     
     n, T = size(x)
     q = @view x[:,1]
@@ -97,7 +97,7 @@ end
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
 function log_norm_parametrisation(par, T) 
-    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
+    ϕ, σⁱ, γ, δ, θ, β, ν = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
