@@ -1,5 +1,5 @@
 function thresholds(par, c, z, o, increment=5)
-    ϕ, σⁱ, γ, δ, θ, β, ν, N = par
+    ϕ, σⁱ, γ, δ, θ, β, ν = par
     T = length(c)
     N = length(z)
 
@@ -23,8 +23,7 @@ function thresholds(par, c, z, o, increment=5)
     z = exp.(z.*σ'.+μ')
     o = o .≤ θ
     
-    # @inbounds
-    for t=T-1:-1:1
+    @inbounds for t=T-1:-1:1
         temp1 = repeat(δ.*r1', N)
         temp2 = repeat(z[:,t],1,ngrid)
         temp3 = repeat(o[:,t],1,ngrid)
