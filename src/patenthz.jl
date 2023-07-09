@@ -1,5 +1,6 @@
 function patenthz(
-    par, hz, initial_shock, obsolence, costs
+    par, hz, initial_shock, obsolence, costs,
+    ν=2, β=.95
 )
     """
 
@@ -12,14 +13,14 @@ function patenthz(
     z: Initial shocks for inner loop simulation. Random or quasirandom draw of size N.
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
-    ϕ, σⁱ, γ, δ, θ, β, ν = par
+    ϕ, σⁱ, γ, δ, θ = par
 
     S = length(initial_shock)
     T = length(hz)
     r = zeros(S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
-    r̄ = thresholds(par, costs, initial_shock, obsolence)
+    r̄ = thresholds(par, costs, initial_shock, obsolence, β)
 
     μ, σ = log_norm_parametrisation(par, T)
 
@@ -41,6 +42,8 @@ function patenthz(
         # ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
+    @show sum(r_d, dims=1)
+    inno_shock = mean(r, dims=1)
     
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     survive = vec(sum(ℓ', dims=2))
@@ -50,11 +53,13 @@ function patenthz(
     return (
         (err'*W*err)[1],
         ehz,
-        survive
+        survive,
+        inno_shock
     )
 end
 
-function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
+function simulate_patenthz(par, x, o, c, ishocks,
+    ν=2, β=.95
 )
     """
     simulate_patenthz(par::PatentModel, x)
@@ -66,12 +71,12 @@ function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
         x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
         o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
     """
-    ϕ, σⁱ, γ, δ, θ, β, ν = par
+    ϕ, σⁱ, γ, δ, θ = par
     
     n, T = size(x)
     q = @view x[:,1]
     z = @view x[:,2:end]
-    th = thresholds(par, c, ishocks, o)
+    th = thresholds(par, c, ishocks, o, β)
     
     @assert length(th) == T "Dimension mismatch in time"
 
@@ -106,7 +111,7 @@ end
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
 function log_norm_parametrisation(par, T) 
-    ϕ, σⁱ, γ, δ, θ, β, ν = par
+    ϕ, σⁱ, γ, δ, θ = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)

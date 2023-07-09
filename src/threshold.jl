@@ -1,5 +1,5 @@
-function thresholds(par, c, z, o, increment=5)
-    ϕ, σⁱ, γ, δ, θ, β, ν = par
+function thresholds(par, c, z, o, β, increment=5)
+    ϕ, σⁱ, γ, δ, θ = par
     T = length(c)
     N = length(z)
 
