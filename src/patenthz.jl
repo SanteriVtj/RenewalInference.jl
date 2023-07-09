@@ -15,7 +15,7 @@ function patenthz(
     ϕ, σⁱ, γ, δ, θ, β, ν = par
 
     S = length(initial_shock)
-    T = length(hz)-1
+    T = length(hz)
     r = zeros(S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
@@ -28,8 +28,8 @@ function patenthz(
     r_d[:,1] = r[:,1] .≥ r̄[1]
     o = obsolence .≥ θ
 
-    ℓ = zeros(size(r))
-    ℓ[:,1] = 1 ./(1 .+exp.(r[:,1]./ν))
+    # ℓ = zeros(size(r))
+    # ℓ[:,1] = 1 ./(1 .+exp.(-r[:,1]./ν))
 
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
@@ -38,11 +38,20 @@ function patenthz(
         r[r_d[:,t-1] .== 0,t] .= 0
         # Patent is kept active if its value exceed the threshold o.w. set to zero
         r_d[:,t] .= r[:,t] .≥ r̄[t]
-        ℓ[:,t] = likelihood(r, r̄, t, ν)
+        # ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    ehz=modelhz(sum(ℓ', dims=1), S)
-    (ehz'*ehz)[1]
+    
+    ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
+    survive = vec(sum(ℓ', dims=2))
+    ehz=modelhz(survive, S)
+    err = ehz[2:end]-hz[2:end]
+    W = Diagonal(sqrt.(survive[2:end]./S))
+    return (
+        (err'*W*err)[1],
+        ehz,
+        survive
+    )
 end
 
 function simulate_patenthz(par::Vector{Float64}, x, o, c, ishocks
