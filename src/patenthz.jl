@@ -27,7 +27,7 @@ function patenthz(
     s = exp.(initial_shock.*σ'.+μ')
     r[:,1] = s[:,1]
     r_d[:,1] = r[:,1] .≥ r̄[1]
-    o = obsolence .≥ θ
+    o = obsolence .≤ θ
 
     # ℓ = zeros(size(r))
     # ℓ[:,1] = 1 ./(1 .+exp.(-r[:,1]./ν))
@@ -43,6 +43,7 @@ function patenthz(
     end
 
     @show sum(r_d, dims=1)
+    @show r̄
     inno_shock = mean(r, dims=1)
     
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
