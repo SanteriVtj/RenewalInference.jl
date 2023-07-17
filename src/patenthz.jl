@@ -17,7 +17,7 @@ function patenthz(
 
     S = length(initial_shock)
     T = length(hz)
-    r = zeros(S,T)
+    r = zeros(eltype(par), S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
     r̄ = thresholds(par, costs, initial_shock, obsolence, β)
