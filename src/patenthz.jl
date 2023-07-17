@@ -1,6 +1,6 @@
 function patenthz(
-    par, hz, initial_shock, obsolence, costs,
-    ν=2, β=.95
+    par, hz, initial_shock, obsolence, costs;
+    opt=true, ν=2, β=.95
 )
     """
 
@@ -25,6 +25,7 @@ function patenthz(
     μ, σ = log_norm_parametrisation(par, T)
 
     s = exp.(initial_shock.*σ'.+μ')
+    inno_shock = mean(s, dims=1)
     r[:,1] = s[:,1]
     r_d[:,1] = r[:,1] .≥ r̄[1]
     o = obsolence .≤ θ
@@ -42,10 +43,8 @@ function patenthz(
         # ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
 
-    @show sum(r_d, dims=1)
-    @show r̄
-    inno_shock = mean(r, dims=1)
-    
+    patent_value = mean(r, dims=1) 
+
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     survive = vec(sum(ℓ', dims=2))
     ehz=modelhz(survive, S)
@@ -55,7 +54,8 @@ function patenthz(
         (err'*W*err)[1],
         ehz,
         survive,
-        inno_shock
+        inno_shock,
+        patent_value
     )
 end
 
