@@ -4,14 +4,14 @@ function thresholds(par, c, z, o, β, increment=5)
     N = length(z)
 
     r_up = maximum(c)+increment
-    r1 = collect(Float64, 0:increment:r_up)
+    r1 = collect(0:increment:r_up)
     ngrid = length(r1)
 
-    V = zeros(T, ngrid)
-    r̄ = zeros(T)
+    V = zeros(eltype(par), T, ngrid)
+    r̄ = zeros(eltype(par), T)
 
     @inbounds V[T,:] = r1' .- c[T]
-    idx = findfirst(V[T,:].>0)
+    idx = findfirst(V[T,:].>zero(eltype(V)))
     m_idx = maximum([idx-1,1])
     
     @inbounds r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
@@ -31,7 +31,7 @@ function thresholds(par, c, z, o, β, increment=5)
         temp4 = interp.(dropdims(temp3.*maximum([temp1;;;temp2], dims=3), dims=3))
         temp5 = 1/N.*ones(1,N)*temp4
         V[t,:] = r1'.-c[t].+β.*temp5
-        idx = findfirst(V[t,:].>0)
+        idx = findfirst(V[t,:].>zero(eltype(V)))
         r̄[t] = idx == 1 ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
         V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
     end
