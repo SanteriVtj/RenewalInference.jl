@@ -46,6 +46,7 @@ function patenthz(
     patent_value = mean(r, dims=1) 
 
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
+    
     survive = vec(sum(ℓ', dims=2))
     ehz=modelhz(survive, S)
     err = ehz[2:end]-hz[2:end]
