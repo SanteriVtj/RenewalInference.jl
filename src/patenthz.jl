@@ -117,6 +117,8 @@ function log_norm_parametrisation(par, T)
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
     e_var = e_mean.^2
+    
+    e_mean[e_mean .≤ 0] .= 0
 
     μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
