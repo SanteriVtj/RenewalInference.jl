@@ -3,7 +3,6 @@ function patenthz(
     opt=true, ν=2, β=.95
 )
     """
-
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
     hz: Empirical hazard rates.
@@ -26,12 +25,11 @@ function patenthz(
 
     s = exp.(initial_shock.*σ'.+μ')
     inno_shock = mean(s, dims=1)
-    r[:,1] = s[:,1]
-    r_d[:,1] = r[:,1] .≥ r̄[1]
+    @inbounds begin
+        r[:,1] = s[:,1]
+        r_d[:,1] = r[:,1] .≥ r̄[1]
+    end
     o = obsolence .≤ θ
-
-    # ℓ = zeros(size(r))
-    # ℓ[:,1] = 1 ./(1 .+exp.(-r[:,1]./ν))
 
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
@@ -48,9 +46,10 @@ function patenthz(
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
     survive = vec(sum(ℓ', dims=2))
-    ehz=modelhz(survive, S)
-    err = ehz[2:end]-hz[2:end]
-    W = Diagonal(sqrt.(survive[2:end]./S))
+    ehz = modelhz(survive, S)
+    @inbounds err = ehz[2:end]-hz[2:end]
+    # W = Diagonal(sqrt.(survive[2:end]./S))
+    W = I
     return (
         (err'*W*err)[1],
         ehz,
@@ -112,7 +111,7 @@ end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
-function log_norm_parametrisation(par, T) 
+function log_norm_parametrisation(par, T)
     ϕ, σⁱ, γ, δ, θ = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
