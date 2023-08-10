@@ -1,6 +1,6 @@
 module RenewalInference
 
-    using StatsBase, StaticArrays, Distributions, 
+    using StatsBase, Distributions, 
         QuasiMonteCarlo, Random, Interpolations, DualNumbers,
         LinearAlgebra
 
@@ -15,6 +15,6 @@ module RenewalInference
         simulate_normhz,
         normhz,
         PatentModel,
-        simulate_pathenthz,
+        simulate_patenthz,
         patenthz
 end

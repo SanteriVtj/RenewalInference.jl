@@ -1,16 +1,62 @@
 @testset "Tests for general functionality of patent model" begin
     @test let 
-        par = [.1, 20000., .1, .95, .95, .95, .9, 1000];
+        # using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, Optim
+        par = [.1, 20000., .1, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         N=200;T=17;
-        simulation_shocks = reshape(QuasiMonteCarlo.sample(N*T,0,1,LowDiscrepancySample(2)),(N,T));
-        obsolence = reshape(QuasiMonteCarlo.sample(N*(T-1),0,1,LowDiscrepancySample(2)), (N,T-1));
-        ishocks = QuasiMonteCarlo.sample(N,0,1,LowDiscrepancySample(2));
+        simulation_shocks = QuasiMonteCarlo.sample(N,T,QuasiMonteCarlo.HaltonSample())';
+        obsolence = QuasiMonteCarlo.sample(N,T-1,QuasiMonteCarlo.HaltonSample())';
+        ishock = QuasiMonteCarlo.sample(N,1,QuasiMonteCarlo.HaltonSample())';
         
         x=simulate_patenthz(
-            simulation_shocks, 
-            s, c, ishocks, o2 
+            par,
+            simulation_shocks,
+            obsolence,
+            c,
+            ishock
         );
+
+        empirical_hz = x[1];
+
+        opt_f = (a,p)->patenthz(
+            a,
+            empirical_hz,
+            ishock,
+            obsolence,
+            c
+        )[1]
+
+        p0 = [
+            truncated(Normal(.1, .1*.05), 0, 1),
+            truncated(Normal(20000, 20000*.05), 0, 100_000),
+            truncated(Normal(.1, .1*.05), 0, 1),
+            truncated(Normal(.95, .95*.05), 0, 1),
+            truncated(Normal(.95, .95*.05), 0, 1)
+        ];
+
+        # res=optimize(
+        #     init0->patenthz(
+        #         init0,
+        #         empirical_hz,
+        #         ishock,
+        #         obsolence,
+        #         c
+        #     )[1],
+        #     collect(Iterators.flatten(rand.(p0, 1)))
+        # )
+
+        optp = OptimizationProblem(
+            opt_f,
+            collect(Iterators.flatten(rand.(p0, 1))),
+            [0],
+            lb = [0.,0,0,0,0],
+            ub = [1.,100_000,1,1,1]
+        );
+
+        y = solve(
+            optp,
+            BFGS()
+        )
 
         fval = patenthz(
             par, x[1],  
