@@ -50,8 +50,9 @@ function patenthz(
     @inbounds err = ehz[2:end]-hz[2:end]
     # W = Diagonal(sqrt.(survive[2:end]./S))
     W = I
+    fval = (err'*W*err)[1]
     return (
-        (err'*W*err)[1],
+        isnan(fval) ? Inf : fval,
         ehz,
         survive,
         inno_shock,
