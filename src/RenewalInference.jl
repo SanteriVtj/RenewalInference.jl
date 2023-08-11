@@ -9,6 +9,7 @@ module RenewalInference
     include("normalhz.jl")
     include("patenthz.jl")
     include("hz_functions.jl")
+    include("util.jl")
     
     
     export NormModel,
@@ -16,5 +17,6 @@ module RenewalInference
         normhz,
         PatentModel,
         simulate_patenthz,
-        patenthz
+        patenthz,
+        sample_patenthz
 end
