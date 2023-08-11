@@ -1,38 +1,58 @@
 @testset "Tests for general functionality of patent model" begin
     @test let 
-        # using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, Optim
+        using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL
         par = [.1, 20000., .1, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
-        N=200;T=17;
-        simulation_shocks = QuasiMonteCarlo.sample(N,T,QuasiMonteCarlo.HaltonSample())';
-        obsolence = QuasiMonteCarlo.sample(N,T-1,QuasiMonteCarlo.HaltonSample())';
-        ishock = QuasiMonteCarlo.sample(N,1,QuasiMonteCarlo.HaltonSample())';
         
-        x=simulate_patenthz(
-            par,
-            simulation_shocks,
-            obsolence,
-            c,
-            ishock
-        );
-
+        x=create_simul_hz(par,c)
         empirical_hz = x[1];
 
-        opt_f = (a,p)->patenthz(
-            a,
-            empirical_hz,
-            ishock,
-            obsolence,
-            c
-        )[1]
+        patent = (a,p)->sample_patenthz(a, empirical_hz, c)[1]
 
         p0 = [
-            truncated(Normal(.1, .1*.05), 0, 1),
-            truncated(Normal(20000, 20000*.05), 0, 100_000),
-            truncated(Normal(.1, .1*.05), 0, 1),
-            truncated(Normal(.95, .95*.05), 0, 1),
-            truncated(Normal(.95, .95*.05), 0, 1)
+            truncated(Normal(.1, .1*.15), 0, 1),
+            truncated(Normal(20000, 20000*.15), 0, 100_000),
+            truncated(Normal(.1, .1*.15), 0, 1),
+            truncated(Normal(.95, .95*.15), 0, 1),
+            truncated(Normal(.95, .95*.15), 0, 1)
         ];
+        x0 = collect(Iterators.flatten(rand.(p0, 1)))
+        patent(x0, 0)[1]
+
+        opt_patent = OptimizationFunction(
+            patent,
+            Optimization.AutoForwardDiff()
+        )
+
+        optp = OptimizationProblem(
+            opt_patent,
+            collect(Iterators.flatten(rand.(p0, 1))),
+            [0],
+            lb = [0.,0,0,0,0],
+            ub = [1.,100_000,1,1,1]
+        )
+
+        i=0
+        res = Dict()
+        for ϕ=.075:.05:.125, σⁱ=17500:5000:22500, γ=.075:.05:.125, δ=.925:.05:.975, θ=.925:.05:.975
+            i+=1
+            @show i
+            res[i] = optimize(
+                a->sample_patenthz(a, empirical_hz, c, N=750)[1],
+                [ϕ, σⁱ, γ, δ, θ]
+            )
+        end
+
+        succesful_res = [res[i] for i=1:length(res) if res[i].f_converged == 0];
+
+        m = zeros(17,length(succesful_res))
+        pars = zeros(5,length(succesful_res))
+        for i=eachindex(succesful_res)
+            m[:,i] .= sample_patenthz(succesful_res[i].minimizer, empirical_hz, c)[2]
+            pars[:,i] .= succesful_res[i].minimizer
+        end
+        plot(m)
+
 
         # res=optimize(
         #     init0->patenthz(
@@ -45,22 +65,11 @@
         #     collect(Iterators.flatten(rand.(p0, 1)))
         # )
 
-        optp = OptimizationProblem(
-            opt_f,
-            collect(Iterators.flatten(rand.(p0, 1))),
-            [0],
-            lb = [0.,0,0,0,0],
-            ub = [1.,100_000,1,1,1]
-        );
-
-        y = solve(
-            optp,
-            BFGS()
-        )
-
         fval = patenthz(
             par, x[1],  
         );
+
+        
         
     end
 
