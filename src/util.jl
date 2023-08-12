@@ -1,4 +1,4 @@
-function sample_patenthz(x0, hz, c; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
+function _patenthz(x0, hz, c; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
     obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
     ishock = QuasiMonteCarlo.sample(N,1,alg)'
     return patenthz(
@@ -12,7 +12,7 @@ function sample_patenthz(x0, hz, c; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCar
     )
 end
 
-function create_simul_hz(par, c; N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
+function _simulate_patenthz(par, c; N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
     simulation_shocks = QuasiMonteCarlo.sample(N,T,alg)'
     obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
     ishock = QuasiMonteCarlo.sample(N,1,alg)'
@@ -23,4 +23,11 @@ function create_simul_hz(par, c; N=200, T=17, alg=QuasiMonteCarlo.HaltonSample()
         c,
         ishock
     )
+end
+
+function _thresholds(par,c; β=.95)
+    simulation_shocks = QuasiMonteCarlo.sample(N,T,alg)'
+    obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
+    ishock = QuasiMonteCarlo.sample(N,1,alg)'
+    return thresholds(par, c, ishock, obsolence, β)
 end

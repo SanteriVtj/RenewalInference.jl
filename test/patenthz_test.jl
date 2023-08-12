@@ -4,10 +4,10 @@
         par = [.1, 20000., .1, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         
-        x=create_simul_hz(par,c)
+        x=_simulate_patenthz(par,c)
         empirical_hz = x[1];
 
-        patent = (a,p)->sample_patenthz(a, empirical_hz, c)[1]
+        patent = (a,p)->_patenthz(a, empirical_hz, c)[1]
 
         p0 = [
             truncated(Normal(.1, .1*.15), 0, 1),
@@ -38,7 +38,9 @@
             i+=1
             @show i
             res[i] = optimize(
-                a->sample_patenthz(a, empirical_hz, c, N=750)[1],
+                a->_patenthz(a, empirical_hz, c, N=750)[1],
+                [0.,0,0,0,0],
+                [1.,100_000,1,1,1],
                 [ϕ, σⁱ, γ, δ, θ]
             )
         end
@@ -48,7 +50,7 @@
         m = zeros(17,length(succesful_res))
         pars = zeros(5,length(succesful_res))
         for i=eachindex(succesful_res)
-            m[:,i] .= sample_patenthz(succesful_res[i].minimizer, empirical_hz, c)[2]
+            m[:,i] .= _patenthz(succesful_res[i].minimizer, empirical_hz, c)[2]
             pars[:,i] .= succesful_res[i].minimizer
         end
         plot(m)
