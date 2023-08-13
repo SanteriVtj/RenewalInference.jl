@@ -3,10 +3,12 @@ function thresholds(par, c, z, o, β; ngrid=500)
     T = length(c)
     N = length(z)
 
-    increment = 5
-    r_up = maximum(c)+increment
-    r1 = collect(0:increment:r_up) # expm1.(range(0, log1p(maximum(c)), length=ngrid))
-    ngrid = length(r1)
+    # increment = 5
+    # r_up = maximum(c)+increment
+    # r1 = collect(0:increment:r_up) # 
+    r1 = expm1.(range(0, log1p(maximum(c)), length=ngrid-1))
+    append!(r1, 2*r1[end]-r1[end-1])
+    # ngrid = length(r1)
     
     V = zeros(eltype(par), T, ngrid)
     r̄ = zeros(eltype(par), T)
