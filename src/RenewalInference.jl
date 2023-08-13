@@ -17,7 +17,5 @@ module RenewalInference
         normhz,
         PatentModel,
         simulate_patenthz,
-        patenthz,
-        sample_patenthz,
-        create_simul_hz
+        patenthz
 end

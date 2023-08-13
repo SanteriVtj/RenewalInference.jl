@@ -25,8 +25,7 @@ function _simulate_patenthz(par, c; N=200, T=17, alg=QuasiMonteCarlo.HaltonSampl
     )
 end
 
-function _thresholds(par,c; β=.95)
-    simulation_shocks = QuasiMonteCarlo.sample(N,T,alg)'
+function _thresholds(par,c; β=.95, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
     obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
     ishock = QuasiMonteCarlo.sample(N,1,alg)'
     return thresholds(par, c, ishock, obsolence, β)
