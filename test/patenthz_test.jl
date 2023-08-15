@@ -19,20 +19,24 @@
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
         patent(x0, 0)[1]
 
+        # opt_patent = OptimizationFunction(
+        #     patent,
+        #     Optimization.AutoForwardDiff()
+        # )
         opt_patent = OptimizationFunction(
-            patent,
-            Optimization.AutoForwardDiff()
+            patent
         )
 
         optp = OptimizationProblem(
             opt_patent,
-            collect(Iterators.flatten(rand.(p0, 1))),
+            [0.075, 22500, 0.075, .925, .925],
             [0],
             lb = [0.,0,0,0,0],
             ub = [1.,100_000,1,1,1]
         )
 
-        res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        # res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        res = solve(optp)
 
         res = optimize(
             a->RenewalInference._patenthz(a, empirical_hz, c)[1],
