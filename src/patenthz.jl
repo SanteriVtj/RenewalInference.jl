@@ -105,8 +105,8 @@ function simulate_patenthz(par, x, o, c, ishocks,
         # Patent is kept active if its value exceed the threshold o.w. set to zero
         r_d[:,t] .= r[:,t] .≥ th[t]
     end
-
-    (computehz(sum(r_d, dims=2)), r, r_d)
+    
+    return (computehz(sum(r_d, dims=2)), r, r_d)
 end
 
 
@@ -124,5 +124,5 @@ function log_norm_parametrisation(par, T)
     μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
 
-    (μ, σ)
+    return (μ, σ)
 end
