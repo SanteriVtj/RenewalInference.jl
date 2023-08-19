@@ -1,5 +1,5 @@
 function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
-    ϕ, σⁱ, γ, δ, θ = par
+    _, _, δ, θ = par
     T = length(c)
     N = length(z)
 

@@ -1,7 +1,7 @@
 @testset "Tests for general functionality of patent model" begin
     @test let
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches
-        par = [.99, 20000., .1, .95, .95];
+        par = [.99, .1, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
 
         x=RenewalInference._simulate_patenthz(par,c)
@@ -10,7 +10,7 @@
         patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c)[1]
 
         p0 = [
-            truncated(Normal(.95, .1*.15), 0, 1),
+            truncated(Normal(.99, .1*.15), 0, 1),
             truncated(Normal(20000, 20000*.15), 0, 100_000),
             truncated(Normal(.1, .1*.15), 0, 1),
             truncated(Normal(.95, .95*.15), 0, 1),
@@ -29,14 +29,14 @@
 
         optp = OptimizationProblem(
             opt_patent,
-            x0, # [0.075, 22500, 0.075, .925, .925],
+            [0.075, 0.075, .925, .925, ],
             [0],
             lb = [0.,0,0,0,0],
             ub = [1.,100_000,1,1,1]
         )
 
-        res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
-        # res = solve(optp)
+        # res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        res = solve(optp, NelderMead())
 
         res = optimize(
             a->RenewalInference._patenthz(a, empirical_hz, c)[1],

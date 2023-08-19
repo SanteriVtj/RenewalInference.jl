@@ -1,18 +1,20 @@
 function patenthz(
-    par, hz, initial_shock, obsolence, costs;
+    par, data, initial_shock, obsolence, costs;
     opt=true, ν=2, β=.95
 )
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
-    hz: Empirical hazard rates.
+    data: Empirical hazard rates and inventor data.
     s: Simulation draw.
     o: Obsolence draw.
     c: Renewal costs for patents.
     z: Initial shocks for inner loop simulation. Random or quasirandom draw of size N.
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
-    ϕ, σⁱ, γ, δ, θ = par
+    _, _, δ, θ = par
+    hz = data[:,1]
+    inventor_data = data[:,2:end]
 
     S = length(initial_shock)
     T = length(hz)
@@ -21,7 +23,7 @@ function patenthz(
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
     r̄ = thresholds(par, costs, initial_shock, obsolence, β)
 
-    μ, σ = log_norm_parametrisation(par, T)
+    μ, σ = log_norm_parametrisation(par, inventor_data, T)
 
     s = exp.(initial_shock.*σ'.+μ')
     inno_shock = mean(s, dims=1)
@@ -48,8 +50,8 @@ function patenthz(
     survive = vec(sum(ℓ', dims=2))
     ehz = modelhz(survive, S)
     @inbounds err = ehz[2:end]-hz[2:end]
-    # W = Diagonal(sqrt.(survive[2:end]./S))
-    W = I
+    W = Diagonal(sqrt.(survive[2:end]./S))
+    # W = I
     fval = (err'*W*err)[1]
     return (
         isnan(fval) ? Inf : fval,
@@ -73,7 +75,7 @@ function simulate_patenthz(par, x, o, c, ishocks,
         x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
         o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
     """
-    ϕ, σⁱ, γ, δ, θ = par
+    _, _, δ, θ = par
     
     n, T = size(x)
     q = @view x[:,1]
@@ -112,12 +114,14 @@ end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
-function log_norm_parametrisation(par, T)
-    ϕ, σⁱ, γ, δ, θ = par
+function log_norm_parametrisation(par, inventor_data, T)
+    ϕ, γ, _, _ = par
+    σⁱ = sum(inventor_data*par[5:end])
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
-    e_var = e_mean.^2
+    # e_var = e_mean.^2
+    e_var  = (ϕ.^(1:T)*σⁱ).^2
     
     e_mean[e_mean .≤ 0] .= 0
 
