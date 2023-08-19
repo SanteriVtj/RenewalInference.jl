@@ -4,10 +4,14 @@
         par = [.99, .1, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
 
-        x=RenewalInference._simulate_patenthz(par,c)
+        inventor_data = rand(MvNormal([1_200,80],[200. 0; 0 15]), 200)'
+
+        inv_coef = [10., 75]
+        par = vcat(par, inv_coef)
+        x=RenewalInference._simulate_patenthz(par,c, inventor_data)
         empirical_hz = x[1];
 
-        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c)[1]
+        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c, inventor_data)[1]
 
         p0 = [
             truncated(Normal(.99, .1*.15), 0, 1),
@@ -17,7 +21,7 @@
             truncated(Normal(.95, .95*.15), 0, 1)
         ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
-        patent(x0, 0)[1]
+        patent(vcat(x0, inv_coef), 0)[1]
 
         opt_patent = OptimizationFunction(
             patent,

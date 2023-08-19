@@ -1,11 +1,11 @@
 function patenthz(
-    par, data, initial_shock, obsolence, costs;
+    par, hz, initial_shock, obsolence, costs, inventor_data;
     opt=true, ν=2, β=.95
 )
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
-    data: Empirical hazard rates and inventor data.
+    hz: Empirical hazard rates.
     s: Simulation draw.
     o: Obsolence draw.
     c: Renewal costs for patents.
@@ -13,15 +13,13 @@ function patenthz(
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
     _, _, δ, θ = par
-    hz = data[:,1]
-    inventor_data = data[:,2:end]
 
     S = length(initial_shock)
     T = length(hz)
     r = zeros(eltype(par), S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
-    r̄ = thresholds(par, costs, initial_shock, obsolence, β)
+    r̄ = thresholds(par, costs, initial_shock, obsolence, β, inventor_data)
 
     μ, σ = log_norm_parametrisation(par, inventor_data, T)
 
@@ -45,6 +43,7 @@ function patenthz(
 
     patent_value = mean(r, dims=1) 
 
+    @show size(r), size(r̄)
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
     survive = vec(sum(ℓ', dims=2))
@@ -62,7 +61,7 @@ function patenthz(
     )
 end
 
-function simulate_patenthz(par, x, o, c, ishocks,
+function simulate_patenthz(par, x, o, c, ishocks, inventor_data;
     ν=2, β=.95
 )
     """
@@ -80,11 +79,11 @@ function simulate_patenthz(par, x, o, c, ishocks,
     n, T = size(x)
     q = @view x[:,1]
     z = @view x[:,2:end]
-    th = thresholds(par, c, ishocks, o, β)
+    th = thresholds(par, c, ishocks, o, β, inventor_data)
     
     @assert length(th) == T "Dimension mismatch in time"
 
-    μ, σ = log_norm_parametrisation(par, T)
+    μ, σ = log_norm_parametrisation(par, inventor_data, T)
 
     # Zero matrix for patent values and active patent periods
     r = zeros(n,T)

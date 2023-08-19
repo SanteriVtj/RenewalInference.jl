@@ -1,4 +1,4 @@
-function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
+function thresholds(par, c, z, o, β, inventor_data; ngrid=500, n_threads=Threads.nthreads())
     _, _, δ, θ = par
     T = length(c)
     N = length(z)
@@ -20,7 +20,7 @@ function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
         V[T,:] = maximum(hcat(V[T,:], zeros(length(V[T,:]))), dims=2)
     end
 
-    μ, σ = log_norm_parametrisation(par, T)
+    μ, σ = log_norm_parametrisation(par, inventor_data, T)
 
     z = exp.(z.*σ'.+μ')
     o = o .≤ θ
