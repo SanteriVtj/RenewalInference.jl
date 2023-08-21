@@ -56,5 +56,6 @@ function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
         r̄[t] = (idx == 1) | isnothing(idx) ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
         V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
     end
+    
     return r̄
 end
