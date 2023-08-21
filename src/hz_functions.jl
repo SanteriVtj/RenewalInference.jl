@@ -1,5 +1,5 @@
 function computehz(expirations)
-    min = minimum(expirations)
+    min = 1
     max = maximum(expirations)
 
     cm = countmap(expirations)

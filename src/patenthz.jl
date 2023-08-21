@@ -46,6 +46,7 @@ function patenthz(
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
     survive = vec(sum(ℓ', dims=2))
+    @show size(survive)
     ehz = modelhz(survive, S)
     @inbounds err = ehz[2:end]-hz[2:end]
     # W = Diagonal(sqrt.(survive[2:end]./S))
@@ -105,7 +106,7 @@ function simulate_patenthz(par, x, o, c, ishocks,
         # Patent is kept active if its value exceed the threshold o.w. set to zero
         r_d[:,t] .= r[:,t] .≥ th[t]
     end
-    
+    @show countmap(sum(r_d, dims=2))
     return (computehz(sum(r_d, dims=2)), r, r_d)
 end
 
@@ -117,9 +118,10 @@ function log_norm_parametrisation(par, T)
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
-    e_var = e_mean.^2
+    # e_var = e_mean.^2
+    e_var = (ϕ.^(1:T)*σⁱ).^2
     
-    e_mean[e_mean .≤ 0] .= 0
+    # e_mean[e_mean .≤ 0] .= 0
 
     μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
