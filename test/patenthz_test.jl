@@ -23,9 +23,6 @@
             patent,
             Optimization.AutoForwardDiff()
         )
-        # opt_patent = OptimizationFunction(
-        #     patent
-        # )
 
         optp = OptimizationProblem(
             opt_patent,
@@ -38,12 +35,12 @@
         res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
         # res = solve(optp)
 
-        res = optimize(
-            a->RenewalInference._patenthz(a, empirical_hz, c)[1],
-            [0.,0,0,0,0],
-            [1.,100_000,1,1,1],
-            x0
-        )
+        # res = optimize(
+        #     a->RenewalInference._patenthz(a, empirical_hz, c)[1],
+        #     [0.,0,0,0,0],
+        #     [1.,100_000,1,1,1],
+        #     x0
+        # )
 
         i=0
         res = Dict()
