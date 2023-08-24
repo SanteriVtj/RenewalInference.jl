@@ -46,11 +46,10 @@ function patenthz(
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
     survive = vec(sum(ℓ', dims=2))
-    @show size(survive)
     ehz = modelhz(survive, S)
     @inbounds err = ehz[2:end]-hz[2:end]
-    # W = Diagonal(sqrt.(survive[2:end]./S))
-    W = I
+    W = Diagonal(sqrt.(survive[2:end]./S))
+    # W = I
     fval = (err'*W*err)[1]
     return (
         isnan(fval) ? Inf : fval,
@@ -117,7 +116,7 @@ function log_norm_parametrisation(par, T)
     ϕ, σⁱ, γ, δ, θ = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
-    e_mean = ϕ.^(1:T)*σⁱ*(1-γ)
+    e_mean = ϕ.^(0:(T-1))*σⁱ*(1-γ)
     e_var = e_mean.^2
     # e_var = (ϕ.^(1:T)*σⁱ).^2
 
