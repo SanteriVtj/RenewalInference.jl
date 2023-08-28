@@ -2,7 +2,7 @@ module RenewalInference
 
     using StatsBase, Distributions, 
         QuasiMonteCarlo, Random, Interpolations, DualNumbers,
-        LinearAlgebra
+        LinearAlgebra, CairoMakie, DataFrames, KernelDensity
 
     include("model.jl")
     include("threshold.jl")
