@@ -1,6 +1,6 @@
 function patenthz(
     par, hz, initial_shock, obsolence, costs;
-    opt=true, ν=2, β=.95
+    opt=true, ν=2, β=.95, n_threads=Threads.nthreads()
 )
     """
     # Arguments
@@ -31,14 +31,22 @@ function patenthz(
     end
     o = obsolence .≤ θ
 
+    thread_partition = collect(1:(S ÷ n_threads):S)
+    thread_partition[end] = S
+
     @inbounds for t=2:T
-        # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= o[:,t-1].*maximum(hcat(δ.*r[:,t-1], s[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
-        # If patent wasn't active in t-1 it cannot be active in t
-        r[r_d[:,t-1] .== 0,t] .= 0
-        # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] .= r[:,t] .≥ r̄[t]
-        # ℓ[:,t] = likelihood(r, r̄, t, ν)
+        Threads.@threads for i in eachindex(thread_partition)[2:end]
+            # Create ranges to assaing each part of the simulation to correct row in value function representation V
+            col_range = thread_partition[i-1]:thread_partition[i]
+            # compute patent value at t by maximizing between learning shocks and depreciation
+            r[col_range,t] .= o[col_range,t-1].*maximum(hcat(δ.*r[col_range,t-1], s[col_range,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
+            # If patent wasn't active in t-1 it cannot be active in t
+            r0 = @view r[col_range,t]
+            r0[r_d[col_range,t-1] .== 0] .= 0
+            # Patent is kept active if its value exceed the threshold o.w. set to zero
+            r_d[col_range,t] .= r[col_range,t] .≥ r̄[t]
+            # ℓ[:,t] = likelihood(r, r̄, t, ν)
+        end
     end
 
     patent_value = mean(r, dims=1) 
