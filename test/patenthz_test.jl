@@ -4,17 +4,24 @@
         par = [.75, 20000., .5, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
 
-        x=RenewalInference._simulate_patenthz(par,c)
+        x=RenewalInference._simulate_patenthz(par,c,N=1000)
         empirical_hz = x[1];
 
-        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c)[1]
+        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c, N=1000)[1]
 
+        # p0 = [
+        #     truncated(Normal(.75, 1*.15), 0, 1),
+        #     truncated(Normal(20000, 100_000*.15), 0, 100_000),
+        #     truncated(Normal(.5, 1*.15), 0, 1),
+        #     truncated(Normal(.95, 1*.15), 0, 1),
+        #     truncated(Normal(.95, 1*.15), 0, 1)
+        # ];
         p0 = [
-            truncated(Normal(.75, 1*.15), 0, 1),
-            truncated(Normal(20000, 100_000*.15), 0, 100_000),
-            truncated(Normal(.5, 1*.15), 0, 1),
-            truncated(Normal(.95, 1*.15), 0, 1),
-            truncated(Normal(.95, 1*.15), 0, 1)
+            Uniform(0,1),
+            Uniform(0,100_000),
+            Uniform(0,1),
+            Uniform(0,1),
+            Uniform(0,1),
         ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
         patent(x0, 0)[1]
@@ -32,7 +39,7 @@
             ub = [1.,100_000,1,1,1]
         )
 
-        # res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
         # res = solve(optp)
 
         # res = optimize(
@@ -44,7 +51,7 @@
 
         # i=0
         res = Dict()
-        @time for i in 1:50 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
+        @time for i in 1:150 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             # i+=1
             @show i
             # res[i] = optimize(
@@ -72,7 +79,10 @@
         end
 
         # succesful_res = [res[i] for i=1:length(res) if res[i].f_converged == 0];
-        succesful_res = [res[i] for i=1:length(res) if res[i].original.f_converged == 0];
+        succesful_res = [
+            res[i] 
+            for i=1:length(res) 
+            if (res[i].original.f_converged == 0)&all(res[i].original.minimizer .≠ res[i].original.initial_x)];
         
         
         m = zeros(17,length(succesful_res));
@@ -83,7 +93,7 @@
         end
         labels = ["ϕ","σⁱ","γ","δ","θ"]
         CSV.write("C:/Users/Santeri/Desktop/lbfgs-rng-15-of-interval.csv", DataFrame(pars', labels))
-        data = CSV.read("C:/Users/Santeri/Desktop/lbfgs-rng-15-of-interval.csv", DataFrame)
+        data = CSV.read("C:/Users/Santeri/Desktop/lbfgs-unif-150.csv", DataFrame)
         RenewalInference.plot_paramdist(data, [.75, 20000,.5,.95,.95])
         
 

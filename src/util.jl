@@ -85,7 +85,7 @@ function plot_paramdist(x, real; cols = 2)
             axs[i],
             minimum(res[names[i]].x),
             maximum(res[names[i]].density)*.2,
-            text = L"\frac{1}{S}\sum{\frac{|x*-\hat{x}|}{\hat{x}}}=%$(round(relative_error[i], digits=3))\ldots"
+            text = L"\frac{1}{S}\sum{\frac{|x*-\hat{x}|}{x*}}=%$(round(relative_error[i], digits=3))\ldots"
         )
         axs[i].title = names[i]
         axislegend(axs[i], position = :lt)
