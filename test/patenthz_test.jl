@@ -1,7 +1,7 @@
 @testset "Tests for general functionality of patent model" begin
     @test let
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie
-        par = [.75, 20000., .5, .95, .95];
+        par = [.2, 20000., .3, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
 
         x=RenewalInference._simulate_patenthz(par,c,N=1000)
