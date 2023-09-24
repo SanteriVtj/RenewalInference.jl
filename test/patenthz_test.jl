@@ -39,7 +39,8 @@
             ub = [1.,100_000,1,1,1]
         )
 
-        res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        # res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
+        res = solve(optp, ParticleSwarm())
         # res = solve(optp)
 
         # res = optimize(
