@@ -24,33 +24,27 @@ function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
 
     z = exp.(z.*σ'.+μ')
     o = o .≤ θ
-    
-    # Create data partition for the simulation-wise threading
-    thread_partition = collect(1:(ngrid ÷ n_threads):ngrid)
-    thread_partition[end] = ngrid
 
     @inbounds for t=T-1:-1:1
         # Allocation for temp variables
         temp1 = repeat(δ.*r1', N)
         temp2 = repeat(z[:,t],1,ngrid)
         temp3 = repeat(o[:,t],1,ngrid)
-        # Loop through the data partitions and assign new thread for each
-        Threads.@threads for i in eachindex(thread_partition)[2:end]
-            # Create ranges to assaing each part of the simulation to correct row in value function representation V
-            col_range = thread_partition[i-1]:thread_partition[i]
-            col_range_len = 1:(col_range.stop-col_range.start+1)
-
-            # Interpolate the value function
-            interp = linear_interpolation(
-                r1[col_range],
-                V[t+1, col_range], 
-                extrapolation_bc=Line()
+        interp = linear_interpolation(
+            r1,
+            V[t+1, :], 
+            extrapolation_bc=Line()
+        )
+        temp4 = interp.(
+            dropdims(
+                temp3.*maximum([temp1;;;temp2], dims=3), 
+                dims=3
+                )
             )
-            temp4 = interp.(dropdims(temp3[:,col_range].*maximum([temp1[:,col_range];;;temp2[:,col_range]], dims=3), dims=3))
-            temp5 = 1/N.*ones(1,N)*temp4[:,col_range_len]
-            # Compute patent values
-            V[t,col_range] = r1[col_range]'.-c[t].+β.*temp5[:,col_range_len]
-        end
+        temp5 = 1/N.*ones(1,N)*temp4
+        # Compute patent values
+        V[t,:] = r1'.-c[t].+β.*temp5
+
         # Gather positive values
         idx = findfirst(V[t,:].>zero(eltype(V)))
         r̄[t] = (idx == 1) | isnothing(idx) ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
