@@ -3,6 +3,20 @@
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie
         par = [.2, 20000., .3, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
+        append!(par, [1., 0, .5])
+
+        # X = hcat(ones(1000), rand(Normal(5,1),1000))
+
+        # N=1000;T=17;alg=QuasiMonteCarlo.HaltonSample()
+        # obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
+        # ishock = QuasiMonteCarlo.sample(N,T,alg)'
+        # simulate_patenthz(
+        #     par,
+        #     ishock,
+        #     obsolence,
+        #     c,
+        #     X
+        # )
 
         x=RenewalInference._simulate_patenthz(par,c,N=1000)
         empirical_hz = x[1];
@@ -19,6 +33,9 @@
         p0 = [
             Uniform(0,1),
             Uniform(0,100_000),
+            Uniform(0,1),
+            Uniform(0,1),
+            Uniform(0,1),
             Uniform(0,1),
             Uniform(0,1),
             Uniform(0,1),
@@ -52,7 +69,7 @@
 
         # i=0
         res = Dict()
-        @time for i in 1:150 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
+        @time for i in 1:25 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             # i+=1
             @show i
             # res[i] = optimize(
@@ -68,8 +85,8 @@
                 opt_patent,
                 x0,# [ϕ, σⁱ, γ, δ, θ],
                 [0],
-                lb = [0.,0,0,0,0],
-                ub = [1.,100_000,1,1,1]
+                lb = [0.,0,0,0,0,0,-Inf, -Inf],
+                ub = [1.,100_000,1,1,1,Inf,Inf,Inf]
             )
 
             res[i] = solve(

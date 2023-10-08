@@ -1,6 +1,6 @@
 function patenthz(
-    par, hz, initial_shock, obsolence, costs;
-    opt=true, ν=.95, β=.95, n_threads=Threads.nthreads()
+    par, hz, x, obsolence, costs, X;
+    opt=true, ν=.95, β=.95
 )
     """
     # Arguments
@@ -14,16 +14,18 @@ function patenthz(
     """
     ϕ, σⁱ, γ, δ, θ = par
 
-    S = length(initial_shock)
+    S, M = size(x)
     T = length(hz)
     r = zeros(eltype(par), S,T)
     
     r_d = falses(S,T) # Equivalent of zeros(UInt8,n,m), but instead of UInt8 stores elements as single bits
-    r̄ = thresholds(par, costs, initial_shock, obsolence, β)
+    r̄ = thresholds(par, costs, x, obsolence, X, β)
 
-    μ, σ = log_norm_parametrisation(par, T)
-
-    s = exp.(initial_shock.*σ'.+μ')
+    μ, σ = initial_shock_parametrisation(par, X)
+    
+    r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+    s = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    
     inno_shock = mean(s, dims=1)
     @inbounds begin
         r[:,1] = s[:,1]
@@ -65,7 +67,7 @@ function patenthz(
     )
 end
 
-function simulate_patenthz(par, x, o, c, ishocks,
+function simulate_patenthz(par, x, o, c, X;
     ν=2, β=.95
 )
     """
@@ -81,24 +83,23 @@ function simulate_patenthz(par, x, o, c, ishocks,
     ϕ, σⁱ, γ, δ, θ = par
     
     n, T = size(x)
-    q = @view x[:,1]
-    z = @view x[:,2:end]
-    th = thresholds(par, c, ishocks, o, β)
+    th = thresholds(par, c, x, o, X, β)
     
     @assert length(th) == T "Dimension mismatch in time"
 
-    μ, σ = log_norm_parametrisation(par, T)
+    # μ, σ = log_norm_parametrisation(par, T)
+    μ, σ = initial_shock_parametrisation(par, X)
 
     # Zero matrix for patent values and active patent periods
-    r = zeros(n,T)
-    r_d = zeros(n,T)
+    r = zeros(eltype(par), n, T)
+    r_d = zeros(eltype(par), n, T)
     obsolence = zeros(n,T-1)
 
-    r[:,1] .= quantile.(LogNormal(μ[1], σ[1]), q)
+    r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
     r_d[:,1] .= r[:,1] .≥ th[1]
 
     # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
-    learning = quantile.(LogNormal.(μ[2:end], σ[2:end]), z')'
+    learning = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     obsolence .= o .≤ θ
 
     # Computing patent values for t=2,…,T
@@ -129,4 +130,13 @@ function log_norm_parametrisation(par, T)
     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
 
     return (μ, σ)
+end
+
+function initial_shock_parametrisation(par, X)
+    σ = par[6]
+    β = par[7:end]
+
+    μ = X*β
+
+    return(μ, σ)
 end

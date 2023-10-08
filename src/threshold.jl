@@ -1,13 +1,14 @@
-function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
+function thresholds(par, c, x, o, X, β; ngrid=500, n_threads=Threads.nthreads())
     ϕ, σⁱ, γ, δ, θ = par
     T = length(c)
-    N = length(z)
+    N, M = size(x)
 
-    r1 = expm1.(range(0, log1p(maximum(c)), length=ngrid-1))
-    append!(r1, 2*r1[end]-r1[end-1])
+    r1 = collect(range(0, maximum(c), length=ngrid-1))
+    append!(r1, last(r1)+last(diff(r1)))
     
     V = zeros(eltype(par), T, ngrid)
     r̄ = zeros(eltype(par), T)
+    z = zeros(eltype(par), N, M)
 
     # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
@@ -20,9 +21,11 @@ function thresholds(par, c, z, o, β; ngrid=500, n_threads=Threads.nthreads())
         V[T,:] = maximum(hcat(V[T,:], zeros(length(V[T,:]))), dims=2)
     end
 
-    μ, σ = log_norm_parametrisation(par, T)
+    # μ, σ = log_norm_parametrisation(par, T)
+    μ, σ = initial_shock_parametrisation(par, X)
 
-    z = exp.(z.*σ'.+μ')
+    z[:,1] = quantile.(LogNormal.(μ, σ), x[:,1])
+    z[:,2:end] = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     o = o .≤ θ
 
     @inbounds for t=T-1:-1:1
