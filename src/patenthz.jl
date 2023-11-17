@@ -1,6 +1,6 @@
 function patenthz(
     par, hz, x, obsolence, costs, X;
-    opt=true, ν=.95, β=.95
+    ν=.95, β=.95
 )
     """
     # Arguments
@@ -23,8 +23,10 @@ function patenthz(
 
     μ, σ = initial_shock_parametrisation(par, X)
     
-    r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-    s = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    @inbounds begin
+        r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+        s = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    end
     
     inno_shock = mean(s, dims=1)
     @inbounds begin
@@ -51,19 +53,20 @@ function patenthz(
     survive = vec(sum(ℓ', dims=2))
     ehz = modelhz(survive, S)
     @inbounds begin
+        ehz[isnan.(ehz)] .= 0.
         err = ehz[2:end]-hz[2:end]
         err[isnan.(err)] .= 0
+        W = Diagonal(sqrt.(survive[2:end]./S))
+        fval = (err'*W*err)[1]
     end
 
-    W = Diagonal(sqrt.(survive[2:end]./S))
-    # W = I
-    fval = (err'*W*err)[1]
     return (
         isnan(fval) ? Inf : fval,
         ehz,
         survive,
         inno_shock,
-        patent_value
+        patent_value,
+        r
     )
 end
 
@@ -90,6 +93,8 @@ function simulate_patenthz(par, x, o, c, X;
     # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
 
+    if σ≤0; return Inf;end
+
     # Zero matrix for patent values and active patent periods
     r = zeros(eltype(par), n, T)
     r_d = zeros(eltype(par), n, T)
@@ -111,7 +116,7 @@ function simulate_patenthz(par, x, o, c, X;
         # Patent is kept active if its value exceed the threshold o.w. set to zero
         r_d[:,t] .= r[:,t] .≥ th[t]
     end
-    
+
     return (computehz(sum(r_d, dims=2)), r, r_d)
 end
 
@@ -136,7 +141,14 @@ function initial_shock_parametrisation(par, X)
     σ = par[6]
     β = par[7:end]
 
+    if X isa Matrix
+        N = size(X,1)
+    else
+        N = length(X)
+    end
+
+    X = hcat(ones(N),X)
     μ = X*β
 
-    return(μ, σ)
+    return (μ, σ)
 end
