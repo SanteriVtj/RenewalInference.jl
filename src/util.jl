@@ -1,4 +1,4 @@
-function _patenthz(x0, hz, c, X; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
+function _patenthz(x0, hz, c, X; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample(), nt=5)
     obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
     ishock = QuasiMonteCarlo.sample(N,T,alg)'
     return patenthz(
