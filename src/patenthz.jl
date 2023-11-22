@@ -1,6 +1,6 @@
 function patenthz(
     par, hz, x, obsolence, costs, X;
-    ν=.95, β=.95, nt = Threads.nthreads()
+    ν=.95, β=.95, nt::Int=Threads.nthreads()
 )
     """
     # Arguments
@@ -30,8 +30,8 @@ function patenthz(
     
     inno_shock = mean(s, dims=1)
     @inbounds begin
-        r[:,1] = s[:,1]
-        r_d[:,1] = r[:,1] .≥ r̄[1]
+        r[:,1] .= s[:,1]
+        r_d[:,1] .= r[:,1] .≥ r̄[1]
     end
     o = obsolence .≤ θ
 

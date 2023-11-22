@@ -9,7 +9,8 @@ function _patenthz(x0, hz, c, X; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.
         c,
         X,
         β=β,
-        ν=ν
+        ν=ν,
+        nt=nt
     )
 end
 
@@ -25,10 +26,10 @@ function _simulate_patenthz(par, c, X; N=200, T=17, alg=QuasiMonteCarlo.HaltonSa
     )
 end
 
-function _thresholds(par,c,X; β=.95, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
+function _thresholds(par,c,X; β=.95, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample(), nt=Threads.nthreads())
     obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
-    ishock = quantile.(Normal(), QuasiMonteCarlo.sample(N,1,alg)')
-    return thresholds(par, c, ishock, obsolence, X, β)
+    ishock = QuasiMonteCarlo.sample(N,T,alg)'
+    return thresholds(par, c, ishock, obsolence, X, β, nt=nt)
 end
 
 function plot_paramdist(x, real; cols = 2)

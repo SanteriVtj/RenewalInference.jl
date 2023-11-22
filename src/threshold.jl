@@ -1,4 +1,6 @@
-function thresholds(par, c, x, o, X, β; ngrid=500, n_threads=Threads.nthreads())
+function thresholds(par, c, x, o, X, β; 
+        ngrid=500, nt=Threads.nthreads()
+    )
     ϕ, σⁱ, γ, δ, θ = par
     T = length(c)
     N, M = size(x)
@@ -24,10 +26,13 @@ function thresholds(par, c, x, o, X, β; ngrid=500, n_threads=Threads.nthreads()
     # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
 
-    z[:,1] = quantile.(LogNormal.(μ, σ), x[:,1])
-    z[:,2:end] = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    z[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+    z[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     o = o .≤ θ
 
+    idx_ranges = Int.(round.(LinRange(0, N, nt)))
+    idx_ranges = [idx_ranges[i]+1:idx_ranges[i+1]
+                    for i in 1:length(idx_ranges)-1]
     @inbounds for t=T-1:-1:1
         # Allocation for temp variables
         temp1 = repeat(δ.*r1', N)
@@ -38,12 +43,7 @@ function thresholds(par, c, x, o, X, β; ngrid=500, n_threads=Threads.nthreads()
             V[t+1, :], 
             extrapolation_bc=Line()
         )
-        temp4 = interp.(
-            dropdims(
-                temp3.*maximum([temp1;;;temp2], dims=3), 
-                dims=3
-                )
-            )
+        temp4 = _calctemp4(temp1,temp2,temp3,interp,idx_ranges)
         temp5 = 1/N.*ones(1,N)*temp4
         # Compute patent values
         V[t,:] = r1'.-c[t].+β.*temp5
@@ -51,8 +51,18 @@ function thresholds(par, c, x, o, X, β; ngrid=500, n_threads=Threads.nthreads()
         # Gather positive values
         idx = findfirst(V[t,:].>zero(eltype(V)))
         r̄[t] = (idx == 1) | isnothing(idx) ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
-        V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
+        V[t,:] .= maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
     end
     
     return r̄
+end
+
+function _calctemp4(temp1,temp2,temp3,interp,idx_ranges)
+    temp4 = zeros(size(temp3))
+    Threads.@threads for i in idx_ranges
+        @views temp4[i,:] .= interp.(
+            temp3[i,:].*max.(temp1[i,:], temp2[i,:])
+        )
+    end
+    temp4
 end
