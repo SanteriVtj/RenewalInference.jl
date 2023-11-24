@@ -4,6 +4,7 @@ module RenewalInference
         QuasiMonteCarlo, Random, Interpolations, DualNumbers,
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity
 
+    include("model_struct.jl")
     include("model.jl")
     include("threshold.jl")
     include("normalhz.jl")
@@ -18,5 +19,6 @@ module RenewalInference
         PatentModel,
         simulate_patenthz,
         patenthz,
-        patentSMM
+        patentSMM,
+        ModelData
 end
