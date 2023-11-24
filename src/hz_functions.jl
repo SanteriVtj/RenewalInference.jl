@@ -13,5 +13,5 @@ end
 function modelhz(x, S)
     cum_lapse = S .- x
     lapse = cum_lapse .- [0; cum_lapse[1:end-1]]
-    lapse ./ [S; x[1:end-1]]
+    return lapse ./ [S; x[1:end-1]]
 end
