@@ -1,16 +1,22 @@
-function thresholds(par, c, x, o, X, β; 
-        ngrid=500, nt=Threads.nthreads()
-    )
+function thresholds(par, modeldata)
     ϕ, σⁱ, γ, δ, θ = par
+    c = modeldata.costs
+    x = modeldata.x
+    obsolence = modeldata.obsolence
+    X = modeldata.X
+    β = modeldata.β
+    ngrid = modeldata.ngrid
+    nt = modeldata.nt
+    V = @view modeldata.V[:,:]
+
+
     T = length(c)
     N, M = size(x)
 
     r1 = collect(range(0, maximum(c), length=ngrid-1))
     append!(r1, last(r1)+last(diff(r1)))
     
-    V = zeros(eltype(par), T, ngrid)
     r̄ = zeros(eltype(par), T)
-    z = zeros(eltype(par), N, M)
 
     # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
@@ -26,9 +32,9 @@ function thresholds(par, c, x, o, X, β;
     # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
 
-    z[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-    z[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
-    o = o .≤ θ
+    x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+    x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    o = obsolence .≤ θ
 
     idx_ranges = Int.(round.(LinRange(0, N, nt)))
     idx_ranges = [idx_ranges[i]+1:idx_ranges[i+1]
@@ -36,7 +42,7 @@ function thresholds(par, c, x, o, X, β;
     @inbounds for t=T-1:-1:1
         # Allocation for temp variables
         temp1 = repeat(δ.*r1', N)
-        temp2 = repeat(z[:,t],1,ngrid)
+        temp2 = repeat(x[:,t],1,ngrid)
         temp3 = repeat(o[:,t],1,ngrid)
         interp = linear_interpolation(
             r1,
