@@ -25,140 +25,81 @@
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
 
-        x=RenewalInference._simulate_patenthz(par,c,X,N=N)
+        simulation_md = ModelData(
+            zeros(Float64, 17),
+            Vector{Float64}(c),
+            X
+        )
+        x=simulate_patenthz(par,simulation_md)
         empirical_hz = x[1];
         # Plots.plot(empirical_hz)
-
-        tdpatent = (p)->RenewalInference._patenthz(p, empirical_hz, c, X,N=N)[1]
-
-        x0 = par
-        df = Optim.TwiceDifferentiable(tdpatent, x0)
-        
-        #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
-        lx = [0., 0,        0,  0,  0,  -Inf,   -Inf,   -Inf,   -Inf,   -Inf]
-        ux = [1., 100_000,  1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf]
-        dfc = TwiceDifferentiableConstraints(lx, ux)
-
-        start_time = time()
-        time_to_setup = zeros(1)
-        function advanced_time_control(x)
-            println(" * Iteration:       ", x.iteration)
-            so_far =  time()-start_time
-            println(" * Time so far:     ", so_far)
-            if x.iteration == 0
-                time_to_setup[:] .= time()-start_time
-            else
-                expected_next_time = so_far + (time()-start_time-time_to_setup[1])/(x.iteration)
-                println(" * Next iteration ≈ ", expected_next_time)
-                println()
-                return expected_next_time < 13 ? false : true
-            end
-            println()
-            false
-        end
-
-        res = optimize(
-            df,
-            dfc,
-            x0,
-            IPNewton(),
-            autodiff=:forward,
-            Optim.Options(callback = advanced_time_control)
+        md = simulation_md = ModelData(
+            vec(empirical_hz),
+            Vector{Float64}(c),
+            X
         )
-
-        
-        cost = c[convert.(Int, sum(x[3], dims=2))]
-        next_cost = [c;Inf][convert.(Int,sum(x[3], dims=2)).+1]
-        
-        simulated = hcat(X, sum(x[3], dims=2), cost, next_cost)
-        simulated = DataFrame(
-            simulated, 
-            ["inventor_age", "sex", "humanities", "renewals_paid", "c", "next_cost"]
-        )
-        CSV.write("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data_sim.csv", simulated)
-
-        optp = OptimizationProblem(
-            opt_patent,
-            x0,
-            [0],
-            lcons = [0.,0,0,0,0],
-            ucons = [1.,100_000,1,1,1]
-        )
-
-        # res = solve(optp, LBFGS(linesearch=LineSearches.BackTracking()))
-        res = solve(optp, ParticleSwarm())
-        # res = solve(optp)
-
-        # res = optimize(
-        #     a->RenewalInference._patenthz(a, empirical_hz, c)[1],
-        #     [0.,0,0,0,0],
-        #     [1.,100_000,1,1,1],
-        #     x0
-        # )
-
-        # i=0
-        # patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c, X, N=30000)[1]
-        # patent(x0, 0)[1]
-        patent = (a)->RenewalInference._patenthz(a, empirical_hz, c, X, N=30000)[1]
+        patent = (a)->patenthz(a,md)[1]
         patent(x0)[1]
-
-        # opt_patent = OptimizationFunction(
-        #     patent,
-        #     Optimization.AutoForwardDiff(),
-        # )
+        
+        N = size(X,1)
+        T = length(c)
+        alg = QuasiMonteCarlo.HaltonSample()
+        obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
+        ishock = QuasiMonteCarlo.sample(N,T,alg)'
+        patenthz(
+            x0,
+            empirical_hz,
+            ishock,
+            obsolence,
+            convert.(Float64, c),
+            X,
+            β=.95,
+            ν=.95
+        )
+        
+        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c, X, N=30000)[1]
+        patent(x0, 0)[1]
+        opt_patent = OptimizationFunction(
+            patent,
+            Optimization.AutoForwardDiff(),
+        )
         
         res = Dict()
-        @time for i in 1:2 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
-            # i+=1
+        @time for i in 1:1 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i
-            # res[i] = optimize(
-            #     a->RenewalInference._patenthz(a, empirical_hz, c, N=750)[1],
-            #     [0.,0,0,0,0],
-            #     [1.,100_000,1,1,1],
-            #     [ϕ, σⁱ, γ, δ, θ],
-            #     method = LBFGS(linesearch = LineSearches.BackTracking()),
-            #     autodiff = :forward
-            # )
             x0 = collect(Iterators.flatten(rand.(p0, 1)))
-            res[i] = optimize(
-                patent,
-                #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
-                [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
-                [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf],
-                x0,
-                Fminbox(NelderMead()),
-                Optim.Options(
-                    time_limit=60,
-                    f_abstol=1e-4,
-                    x_abstol=1e-4
-                )
-            )
-            # optp = OptimizationProblem(
-            #     opt_patent,
-            #     x0,# [ϕ, σⁱ, γ, δ, θ],
-            #     [0],
-            #     lb = [0.,0,0,0,0,-Inf,-Inf, -Inf, -Inf, -Inf],
-            #     ub = [1.,100_000,1,1,1,Inf,Inf,Inf,Inf,Inf]
-            # )
+            x0 = par .+ par./100 .* (-1).^rand(0:1, 10)
 
-            # LBFGS(linesearch=LineSearches.BackTracking()),
-            # res[i] = solve(
-            #     optp,
-            #     LBFGS(linesearch=LineSearches.BackTracking()),
-            #     maxtime = 60
+            prob = OptimizationProblem(
+                patent,
+                x0, 
+                [0],
+                #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
+                lb = [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
+                ub = [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf]
+            )
+            res[i] = solve(prob, LBFGS())
+
+            # res[i] = optimize(
+            #     patent,
+            #     #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
+            #     [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
+            #     [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf],
+            #     x0,
+            #     Fminbox(NelderMead()),
+            #     Optim.Options(
+            #         f_abstol=1e-4,
+            #         x_abstol=1e-4
+            #     )
             # )
-            # res[i] = solve(
-            #     optp,
-            #     NelderMead(),
-            #     maxtime = 60
-            # )
+            # time_limit=60
         end
 
-        # succesful_res = [res[i] for i=1:length(res) if res[i].f_converged == 0];
-        succesful_res = [
-            res[i] 
-            for i=1:length(res) 
-            if (res[i].original.f_converged == 0)&all(res[i].original.minimizer .≠ res[i].original.initial_x)];
+        succesful_res = [res[i] for i=1:length(res) if res[i].f_converged == 0];
+        # succesful_res = [
+        #     res[i] 
+        #     for i=1:length(res) 
+        #     if (res[i].original.f_converged == 0)&all(res[i].original.minimizer .≠ res[i].original.initial_x)];
         
         
         m = zeros(17,length(succesful_res));
@@ -202,8 +143,6 @@
         (typeof(x[1])==Vector{Float64})&(typeof(x[2])==Vector{Float64})
     end
 end
-
-
 
 """
 
