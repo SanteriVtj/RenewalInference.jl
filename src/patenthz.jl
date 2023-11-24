@@ -1,6 +1,4 @@
-function patenthz(
-    par, modeldata::ModelData{T₀}
-) where {T₀<:AbstractFloat}
+function patenthz(par, modeldata)
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
@@ -15,10 +13,8 @@ function patenthz(
     r = modeldata.r
     r_d = modeldata.r_d
     X = modeldata.X
-    costs = modeldata.costs
     obsolence = modeldata.obsolence
     x = modeldata.x
-    β = modeldata.β
     ν = modeldata.ν
     nt = modeldata.nt
     hz = modeldata.hz
@@ -78,9 +74,7 @@ function patenthz(
     )
 end
 
-function simulate_patenthz(par, x, o, c, X;
-    ν=2, β=.95
-)
+function simulate_patenthz(par, modeldata)
     """
     simulate_patenthz(par::PatentModel, x)
 
@@ -92,29 +86,29 @@ function simulate_patenthz(par, x, o, c, X;
         o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
     """
     ϕ, σⁱ, γ, δ, θ = par
-    
+    x = modeldata.x
+    X = modeldata.X
+    r = modeldata.r
+    r_d = modeldata.r_d
+    obsolence = modeldata.obsolence
+
     n, T = size(x)
-    th = thresholds(par, c, x, o, X, β)
+    th = thresholds(par, modeldata)
     
     @assert length(th) == T "Dimension mismatch in time"
 
-    # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
-
-    # Zero matrix for patent values and active patent periods
-    r = zeros(eltype(par), n, T)
-    r_d = zeros(eltype(par), n, T)
 
     r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
     r_d[:,1] .= r[:,1] .≥ th[1]
 
     # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
     learning = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
-    obsolence = o .≤ θ
+    o = obsolence .≤ θ
     # Computing patent values for t=2,…,T
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= obsolence[:,t-1].*maximum(hcat(δ.*r[:,t-1], learning[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
+        r[:,t] .= o[:,t-1].*maximum(hcat(δ.*r[:,t-1], learning[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
         r[:,t] .= r[:,t-1].*r_d[:,t-1]
         # Patent is kept active if its value exceed the threshold o.w. set to zero
@@ -127,7 +121,7 @@ end
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
 function log_norm_parametrisation(par, T)
-    ϕ, σⁱ, γ, δ, θ = par
+    ϕ, σⁱ, γ = par
 
     # Conversion of mean and variance for log normal distribution according to the normal specification
     e_mean = ϕ.^(0:(T-1))*σⁱ*(1-γ)
@@ -144,14 +138,9 @@ function initial_shock_parametrisation(par, X)
     σ = par[6]
     β = par[7:end]
 
-    if X isa Matrix
-        N = size(X,1)
-    else
-        N = length(X)
-    end
-
-    X = hcat(ones(N),X)
-    μ = X*β
+    N = size(X,1)
+    
+    μ = hcat(ones(N),X)*β
 
     return (μ, σ)
 end
