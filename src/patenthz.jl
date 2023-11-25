@@ -26,15 +26,14 @@ function patenthz(par, modeldata)
     μ, σ = initial_shock_parametrisation(par, X)
     
     @inbounds begin
-        r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-        s = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+        r[:,1] .= x[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
+        s = x[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
         r_d[:,1] .= r[:,1] .≥ r̄[1]
     end
+    o = obsolence .≤ θ
     
     inno_shock = mean(s, dims=1)
     
-    o = obsolence .≤ θ
-
     idx_ranges = Int.(round.(LinRange(0, S, nt)))
     idx_ranges = [idx_ranges[i]+1:idx_ranges[i+1]
                     for i in 1:length(idx_ranges)-1]
@@ -56,6 +55,7 @@ function patenthz(par, modeldata)
     
     survive = vec(sum(ℓ', dims=2))
     ehz = modelhz(survive, S)
+
     @inbounds begin
         ehz[isnan.(ehz)] .= 0.
         err = ehz[2:end]-hz[2:end]
@@ -99,11 +99,11 @@ function simulate_patenthz(par, modeldata)
 
     μ, σ = initial_shock_parametrisation(par, X)
 
-    r[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+    r[:,1] .= x[:,1] # quantile.(LogNormal.(μ, σ), x[:,1])
     r_d[:,1] .= r[:,1] .≥ th[1]
 
     # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
-    learning = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    learning = x[:,2:end] # -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     o = obsolence .≤ θ
     # Computing patent values for t=2,…,T
     @inbounds for t=2:T
