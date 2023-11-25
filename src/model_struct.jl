@@ -1,3 +1,9 @@
+mutable struct ModelControl
+    simulation::Bool
+    x_transformed::Bool
+    ModelControl(simulation=false, x_transformed=false) = new(simulation, x_transformed)
+end
+
 struct ModelData{T<:AbstractFloat}
     hz::Vector{T}
     costs::Vector{T}
@@ -11,9 +17,12 @@ struct ModelData{T<:AbstractFloat}
     nt::Int
     ngrid::Int
     V::Matrix{T}
+    controller::ModelControl
     function ModelData{T}(
-        hz, costs, X, x, obsolence, r, r_d, ngrid, V;
-        ν=2., β=.95, nt=Threads.nthreads()) where {T<:AbstractFloat}
+        hz, costs, X, x, obsolence, r, r_d, ngrid, V,
+        nt, controller;
+        ν=2., β=.95
+    ) where {T<:AbstractFloat}
         # Define dimensions
         t = length(hz)
         N = size(X, 1)
@@ -33,12 +42,14 @@ struct ModelData{T<:AbstractFloat}
         N == size(r_d, 1) ? nothing : throw(AssertionError("Number of observations and simulation dummies doesn't match."))
         
         # If all tests are satisfied, create new instance
-        new(hz, costs, X, x, obsolence, r, r_d, ν, β, nt, ngrid, V)
+        new(hz, costs, X, x, obsolence, r, r_d, ν, β, nt, ngrid, V, controller)
     end
 end
 
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T};
-    alg=QuasiMonteCarlo.HaltonSample(), ngrid=500) where {T<:AbstractFloat}
+    alg=QuasiMonteCarlo.HaltonSample(), ngrid=500,
+    nt=Threads.nthreads(), controller=ModelControl()
+) where {T<:AbstractFloat}
     # Inference dimensions for simulation draws
     N = size(X, 1)
     t = length(hz)
@@ -54,6 +65,6 @@ function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T};
     V = Matrix(undef, t, ngrid)
 
     return ModelData{T}(
-        hz, costs, X, x, obsolence, r, r_d, ngrid, V
+        hz, costs, X, x, obsolence, r, r_d, ngrid, V, nt, controller
     )
 end
