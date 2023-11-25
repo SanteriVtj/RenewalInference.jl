@@ -44,7 +44,7 @@
             a->patenthz(a,md),
             Optimization.AutoForwardDiff(),
         )
-        
+        # test
         res = Dict()
         @time for i in 1:1 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i
