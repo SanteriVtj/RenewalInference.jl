@@ -20,5 +20,6 @@ module RenewalInference
         simulate_patenthz,
         patenthz,
         patentSMM,
-        ModelData
+        ModelData,
+        ModelControl
 end
