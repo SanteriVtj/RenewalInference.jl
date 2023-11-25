@@ -56,22 +56,36 @@ function patenthz(par, modeldata)
     survive = vec(sum(ℓ', dims=2))
     ehz = modelhz(survive, S)
 
+    if modeldata.controller.simulation
+        modeldata.hz[:] .= modelhz(sum(r_d, dims=1)', S)
+        return (
+            modelhz(sum(r_d, dims=1)', S),
+            r, 
+            r_d
+        )
+    end
+
     @inbounds begin
         ehz[isnan.(ehz)] .= 0.
         err = ehz[2:end]-hz[2:end]
         err[isnan.(err)] .= 0
         W = Diagonal(sqrt.(survive[2:end]./S))
         fval = (err'*W*err)[1]
+        fval = isnan(fval) ? Inf : fval
     end
 
-    return (
-        isnan(fval) ? Inf : fval,
-        ehz,
-        survive,
-        inno_shock,
-        patent_value,
-        r
-    )
+    if modeldata.controller.debug
+        return (
+            fval,
+            ehz,
+            survive,
+            inno_shock,
+            patent_value,
+            r
+        )
+    end
+
+    return fval
 end
 
 function simulate_patenthz(par, modeldata)

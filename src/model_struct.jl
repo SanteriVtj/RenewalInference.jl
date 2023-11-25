@@ -1,7 +1,8 @@
 mutable struct ModelControl
     simulation::Bool
     x_transformed::Bool
-    ModelControl(simulation=false, x_transformed=false) = new(simulation, x_transformed)
+    debug::Bool
+    ModelControl(simulation=false, x_transformed=false, debug=false) = new(simulation, x_transformed, debug)
 end
 
 struct ModelData{T<:AbstractFloat}
