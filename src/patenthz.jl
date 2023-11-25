@@ -88,50 +88,6 @@ function patenthz(par, modeldata)
     return fval
 end
 
-function simulate_patenthz(par, modeldata)
-    """
-    simulate_patenthz(par::PatentModel, x)
-
-    Function for simulating hazard rates for patent expirations.
-
-        # Arguments:
-        par::PatentModel: struct containing parameters for the distribution of patent exirations.
-        x: random matrix distributed as U([0,1]) for drawing the values from LogNormal. Size N×T
-        o: obsolence draw. Also U([0,1]) distributed random matrix. Size N×T-1. Used in both inner and outer loop.
-    """
-    ϕ, σⁱ, γ, δ, θ = par
-    x = modeldata.x
-    X = modeldata.X
-    r = modeldata.r
-    r_d = modeldata.r_d
-    obsolence = modeldata.obsolence
-
-    n, T = size(x)
-    th = thresholds(par, modeldata)
-    
-    @assert length(th) == T "Dimension mismatch in time"
-
-    μ, σ = initial_shock_parametrisation(par, X)
-
-    r[:,1] .= x[:,1] # quantile.(LogNormal.(μ, σ), x[:,1])
-    r_d[:,1] .= r[:,1] .≥ th[1]
-
-    # size(z)=n×T⇒size(g(z))=T×n⇒size(g(z))'=n×T i.e. size(z)=n×T before and after this line (at least that is the intent)
-    learning = x[:,2:end] # -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
-    o = obsolence .≤ θ
-    # Computing patent values for t=2,…,T
-    @inbounds for t=2:T
-        # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= o[:,t-1].*maximum(hcat(δ.*r[:,t-1], learning[:,t-1]), dims=2) # concat as n×2 matrix and choose maximum in for each row
-        # If patent wasn't active in t-1 it cannot be active in t
-        r[:,t] .= r[:,t-1].*r_d[:,t-1]
-        # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] .= r[:,t] .≥ th[t]
-    end
-    return (modelhz(sum(r_d, dims=1)', n), r, r_d)
-end
-
-
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
 
 function log_norm_parametrisation(par, T)
