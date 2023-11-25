@@ -47,6 +47,8 @@ struct ModelData{T<:AbstractFloat}
     end
 end
 
+# Function for generating new instance of ModelData with default (Halton)samples
+# and other preallocated matrices.
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=500,
     nt=Threads.nthreads(), controller=ModelControl()
