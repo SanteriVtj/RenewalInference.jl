@@ -25,42 +25,23 @@
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
 
-        simulation_md = ModelData(
+        md = ModelData(
             zeros(Float64, 17),
             Vector{Float64}(c),
-            X
-        )
-        x=simulate_patenthz(par,simulation_md)
-        empirical_hz = x[1];
-        # Plots.plot(empirical_hz)
-        md = simulation_md = ModelData(
-            vec(empirical_hz),
-            Vector{Float64}(c),
-            X
-        )
-        patent = (a)->patenthz(a,md)[1]
-        patent(x0)[1]
-        
-        N = size(X,1)
-        T = length(c)
-        alg = QuasiMonteCarlo.HaltonSample()
-        obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
-        ishock = QuasiMonteCarlo.sample(N,T,alg)'
-        patenthz(
-            x0,
-            empirical_hz,
-            ishock,
-            obsolence,
-            convert.(Float64, c),
             X,
-            β=.95,
-            ν=.95
+            controller = ModelControl(
+                true,   # simulation
+                false,  # x_transformed
+                true    # debug
+            )
         )
+        x=patenthz(par,md)
+        md.controller.simulation = false
+        y = patenthz(par,md)
+        md.controller.debug = false
         
-        patent = (a,p)->RenewalInference._patenthz(a, empirical_hz, c, X, N=30000)[1]
-        patent(x0, 0)[1]
         opt_patent = OptimizationFunction(
-            patent,
+            a->patenthz(a,md),
             Optimization.AutoForwardDiff(),
         )
         
