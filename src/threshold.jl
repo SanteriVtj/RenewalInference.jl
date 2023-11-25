@@ -7,7 +7,7 @@ function thresholds(par, modeldata)
     β = modeldata.β
     ngrid = modeldata.ngrid
     nt = modeldata.nt
-    V = @view modeldata.V[:,:]
+    V = modeldata.V
 
 
     T = length(c)
@@ -32,8 +32,11 @@ function thresholds(par, modeldata)
     # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
 
-    x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-    x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    if ~modeldata.controller.x_transformed
+        modeldata.controller.x_transformed = true
+        x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+        x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    end
     o = obsolence .≤ θ
 
     idx_ranges = Int.(round.(LinRange(0, N, nt)))
