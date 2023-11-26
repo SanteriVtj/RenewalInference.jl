@@ -2,7 +2,8 @@ module RenewalInference
 
     using StatsBase, Distributions, 
         QuasiMonteCarlo, Random, Interpolations, DualNumbers,
-        LinearAlgebra, CairoMakie, DataFrames, KernelDensity
+        LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
+        IfElse
 
     include("model_struct.jl")
     include("model.jl")
