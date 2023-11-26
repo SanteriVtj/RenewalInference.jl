@@ -10,17 +10,16 @@ function patenthz(par, modeldata)
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
     ϕ, σⁱ, γ, δ, θ = par
-    r = modeldata.r
-    r_d = modeldata.r_d
     X = modeldata.X
     obsolence = modeldata.obsolence
     x = modeldata.x
     ν = modeldata.ν
-    nt = modeldata.nt
     hz = modeldata.hz
     T = length(hz)
     S = size(x, 1)
     
+    r = zeros(eltype(par), S, T)
+    r_d = zeros(eltype(par), S, T)
     r̄ = thresholds(par, modeldata)
 
     μ, σ = initial_shock_parametrisation(par, X)
