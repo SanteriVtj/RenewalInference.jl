@@ -6,22 +6,25 @@ function thresholds(par, modeldata)
     X = modeldata.X
     β = modeldata.β
     ngrid = modeldata.ngrid
-    nt = modeldata.nt
-    V = modeldata.V
-
-
+    
+    
     T = length(c)
     N, M = size(x)
-
+    
+    V = zeros(eltype(par), T, ngrid)
     r1 = collect(range(0, maximum(c), length=ngrid-1))
     append!(r1, last(r1)+last(diff(r1)))
-    
+   
     r̄ = zeros(eltype(par), T)
 
-    # Compute values for t=T i.e. the last period from which the backwards induction begins
+    # # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
         V[T,:] = r1' .- c[T]
-        idx = any(V[T,:].>zero(eltype(V))) ? findfirst(V[T,:].>zero(eltype(V))) : 1
+        idx = IfElse.ifelse(
+            any(V[T,:].>zero(eltype(V))), 
+            findfirst(V[T,:].>zero(eltype(V))), 
+            1
+        )
         m_idx = maximum([idx-1,1])
 
         r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
@@ -38,40 +41,37 @@ function thresholds(par, modeldata)
         x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     end
     o = obsolence .≤ θ
-
-    idx_ranges = Int.(round.(LinRange(0, N, nt)))
-    idx_ranges = [idx_ranges[i]+1:idx_ranges[i+1]
-                    for i in 1:length(idx_ranges)-1]
+    
+    temp4 = zeros(eltype(V), N, ngrid)
     @inbounds for t=T-1:-1:1
         # Allocation for temp variables
-        temp1 = repeat(δ.*r1', N)
-        temp2 = repeat(x[:,t],1,ngrid)
-        temp3 = repeat(o[:,t],1,ngrid)
-        interp = linear_interpolation(
+        temp1 = δ.*r1
+        temp2 = @view x[:,t]
+        temp3 = @view o[:,t]
+        interp = @views linear_interpolation(
             r1,
             V[t+1, :], 
             extrapolation_bc=Line()
         )
-        temp4 = _calctemp4(temp1,temp2,temp3,interp,idx_ranges)
-        temp5 = 1/N.*ones(1,N)*temp4
+        _calctemp4!(temp4, temp1,temp2,temp3,interp)
+        temp5 = mean(temp4, dims=1)
         # Compute patent values
         V[t,:] = r1'.-c[t].+β.*temp5
 
         # Gather positive values
         idx = findfirst(V[t,:].>zero(eltype(V)))
         r̄[t] = (idx == 1) | isnothing(idx) ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
-        V[t,:] .= maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
+        V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
     end
-    
     return r̄
 end
 
-function _calctemp4(temp1,temp2,temp3,interp,idx_ranges)
-    temp4 = zeros(size(temp3))
-    Threads.@threads for i in idx_ranges
-        @views temp4[i,:] .= interp.(
-            temp3[i,:].*max.(temp1[i,:], temp2[i,:])
+function _calctemp4!(temp4, temp1,temp2,temp3,interp)
+    Threads.@threads for i in 1:length(eachrow(temp4))
+        temp4[i,:] .= @views interp.(
+            temp3[i].*max.(temp1, temp2[i])
         )
     end
-    temp4
 end
+
+
