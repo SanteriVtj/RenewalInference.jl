@@ -21,8 +21,6 @@ function patenthz(par, modeldata)
     r = zeros(eltype(par), S, T)
     r_d = zeros(eltype(par), S, T)
     r̄ = thresholds(par, modeldata)
-
-    μ, σ = initial_shock_parametrisation(par, X)
     
     @inbounds begin
         r[:,1] .= x[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
@@ -44,8 +42,6 @@ function patenthz(par, modeldata)
             # ℓ[:,t] = likelihood(r, r̄, t, ν)
         end
     end
-
-    patent_value = mean(r, dims=1)
 
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
@@ -76,7 +72,6 @@ function patenthz(par, modeldata)
             ehz,
             survive,
             inno_shock,
-            patent_value,
             r
         )
     end

@@ -1,6 +1,7 @@
 @testset "Tests for general functionality of patent model" begin
     @test let
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie
+        using OptimizationBBO, Interpolations, OptimizationNLopt
         par = [.2, 20000., .3, .9, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         append!(par, [2., 8, 0.1, 0.2, -.3])
@@ -25,7 +26,7 @@
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
 
-        md = ModelData(
+        md_sim = ModelData(
             zeros(Float64, 17),
             Vector{Float64}(c),
             X,
@@ -33,47 +34,38 @@
                 true,   # simulation
                 false,  # x_transformed
                 true    # debug
-            )
+            ),
+            alg=Uniform()
         )
-        x=patenthz(par,md)
-        md.controller.simulation = false
+        x=patenthz(par,md_sim)
+
+        md = ModelData(
+            vec(x[1]),
+            Vector{Float64}(c),
+            X
+        )
         y = patenthz(par,md)
-        md.controller.debug = false
         
         opt_patent = OptimizationFunction(
-            a->patenthz(a,md),
+            (a,x)->patenthz(a,md),
             Optimization.AutoForwardDiff(),
         )
         
         res = Dict()
-        @time for i in 1:1 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
+        @time for i in 1:25 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i
             x0 = collect(Iterators.flatten(rand.(p0, 1)))
-            x0 = par .+ par./100 .* (-1).^rand(0:1, 10)
+            # x0 = par .+ par./20 .* (-1).^rand(0:1, 10)
 
             prob = OptimizationProblem(
-                patent,
+                opt_patent,
                 x0, 
                 [0],
                 #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
                 lb = [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
                 ub = [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf]
             )
-            res[i] = solve(prob, LBFGS())
-
-            # res[i] = optimize(
-            #     patent,
-            #     #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
-            #     [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
-            #     [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf],
-            #     x0,
-            #     Fminbox(NelderMead()),
-            #     Optim.Options(
-            #         f_abstol=1e-4,
-            #         x_abstol=1e-4
-            #     )
-            # )
-            # time_limit=60
+            @time res[i] = solve(prob, NLopt.LN_NELDERMEAD(), reltol=1e-6)
         end
 
         succesful_res = [res[i] for i=1:length(res) if res[i].f_converged == 0];
@@ -124,11 +116,3 @@
         (typeof(x[1])==Vector{Float64})&(typeof(x[2])==Vector{Float64})
     end
 end
-
-"""
-
-Parameter vector order: ϕ, σⁱ, γ, δ, θ, β, ν, N
-
-
-
-"""
