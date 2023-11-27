@@ -1,37 +1,3 @@
-function _patenthz(x0, hz, c, X; β=.95, ν=2, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample(), nt=5)
-    obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
-    ishock = QuasiMonteCarlo.sample(N,T,alg)'
-    return patenthz(
-        x0,
-        hz,
-        ishock,
-        obsolence,
-        c,
-        X,
-        β=β,
-        ν=ν,
-        nt=nt
-    )
-end
-
-function _simulate_patenthz(par, c, X; N=200, T=17, alg=QuasiMonteCarlo.HaltonSample())
-    simulation_shocks = QuasiMonteCarlo.sample(N,T,alg)'
-    obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
-    return simulate_patenthz(
-        par,
-        simulation_shocks,
-        obsolence,
-        c,
-        X
-    )
-end
-
-function _thresholds(par,c,X; β=.95, N=200, T=17, alg=QuasiMonteCarlo.HaltonSample(), nt=Threads.nthreads())
-    obsolence = QuasiMonteCarlo.sample(N,T-1,alg)'
-    ishock = QuasiMonteCarlo.sample(N,T,alg)'
-    return thresholds(par, c, ishock, obsolence, X, β, nt=nt)
-end
-
 function plot_paramdist(x, real; cols = 2)
     names = DataFrames.names(x)
 
