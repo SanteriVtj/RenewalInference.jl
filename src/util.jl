@@ -3,7 +3,7 @@ function plot_paramdist(x, real; cols = 2)
 
     rows = mod(length(names), 2) == 0 ? length(names) ÷ cols : length(names) ÷ 2+1
 
-    fig = Figure(resolution = (400*rows, 600*cols))
+    fig = Figure(size = (400*rows, 600*cols))
     axs = [Axis(fig[i,j]) for i=1:rows, j=1:cols]
 
     res = Dict(i=>kde(x[:,i]) for i in names)

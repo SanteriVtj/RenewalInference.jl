@@ -92,6 +92,7 @@ function log_norm_parametrisation(par, T)
     μ = 2*log.(e_mean)-1/2*log.(e_mean.^2+e_var)
     σ = sqrt.(-2*log.(e_mean)+log.(e_var+e_mean.^2))
 
+    @show mean(μ)
     return (μ, σ)
 end
 
@@ -102,6 +103,6 @@ function initial_shock_parametrisation(par, X)
     N = size(X,1)
     
     μ = hcat(ones(N),X)*β
-
+    
     return (μ, σ)
 end

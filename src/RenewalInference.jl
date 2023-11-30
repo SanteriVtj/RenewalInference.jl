@@ -22,5 +22,6 @@ module RenewalInference
         patenthz,
         patentSMM,
         ModelData,
-        ModelControl
+        ModelControl,
+        plot_paramdist
 end
