@@ -2,33 +2,30 @@
     @test let
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
         using OptimizationBBO, Interpolations, OptimizationNLopt
-        par = [.2, 10000., .3, .9, .95];
+        par = [.9, .5, .9, .9];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # append!(par, [2., 8, 0.1, 0.2, -.3])
-        append!(par, [2., 5, 0])
+        append!(par, [1., 1., 1., 2_000, 5])
         N=30000;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
         # X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
-        X = Matrix(zeros(N,1));
+        X = rand(Normal(10, 1.5), N, 1);
 
-        dσ = zeros(N,3);
-        for (i,v) in enumerate(rand(1:3,N))
-            dσ[i,v] = 1
-        end
+        dσ = rand(Normal(200, 50), N, 1);
 
         p0 = [
             Uniform(0,1),
-            Uniform(0,100_000),
+            Uniform(0,1),
             Uniform(0,1),
             Uniform(0,1),
             Uniform(0,1),
             Uniform(.001,5),
+            Uniform(0,5),
+            Uniform(0,100_000),
             Uniform(0,100),
-            Uniform(0,15),
-            # Uniform(0,5),
             # Uniform(0,5)
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
@@ -37,6 +34,7 @@
             zeros(Float64, 17),
             Vector{Float64}(c),
             X,
+            dσ,
             controller = ModelControl(
                 true,   # simulation
                 false,  # x_transformed
@@ -47,15 +45,11 @@
         x=patenthz(par,md_sim)
         Plots.plot(x[1])
 
-        # md = ModelData(
-        #     vec(x[1]),
-        #     Vector{Float64}(c),
-        #     X
-        # )
         md = ModelData(
-            collect(LinRange(.65, .2, 17)),
+            vec(x[1]),
             Vector{Float64}(c),
-            X
+            X,
+            dσ
         )
         y = patenthz(par,md)
         
@@ -65,32 +59,25 @@
         )
         
         res = Dict()
-        @time for i in 1:25 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
+        @time for i in 1:2 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i
-            x0 = collect(Iterators.flatten(rand.(p0, 1)))
-            # x0 = par .+ par./20 .* (-1).^rand(0:1, 10)
+            # x0 = collect(Iterators.flatten(rand.(p0, 1)))
+            x0 = par .+ par./20 .* (-1).^rand(0:1, 9)
 
-            # prob = OptimizationProblem(
-            #     opt_patent,
-            #     x0, 
-            #     [0],
-            #     #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,     β₃,     β₄
-            #     lb = [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf,   -Inf,   -Inf],
-            #     ub = [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf,    Inf,    Inf]
-            # )
             prob = OptimizationProblem(
                 opt_patent,
                 x0, 
                 [0],
                 #     ϕ,  σⁱ,       γ,  δ,  θ,  β₀,     β₁,     β₂,
-                lb = [0.,    0,          0,  0,  0,  0,      -Inf,   -Inf],
-                ub = [1.,    100_000,    1,  1,  1,  Inf,    Inf,    Inf]
+                lb = [0.,    0, 0,  0,  0,  0,      -Inf,   -Inf,  -Inf],
+                ub = [1.,    1, 1,  1,  1,  Inf,    Inf,    Inf,    Inf]
             )
-            @time res[i] = solve(prob, NLopt.LN_NELDERMEAD(), reltol=1e-6)
+            
+            @time res[i] = solve(prob, NLopt.LN_NELDERMEAD())
         end
         
         m = zeros(17,length(res));
-        pars = zeros(10,length(res));
+        pars = zeros(length(res[1].minimizer),length(res));
         loss = zeros(length(res));
         md.controller.debug = true
         for i=eachindex(res)
@@ -98,11 +85,12 @@
             loss[i] = patenthz(res[i].minimizer, md)[1]
             pars[:,i] .= res[i].minimizer
         end
-        labels = ["ϕ","σⁱ","γ","δ","θ","σ","β0","β1","β2","β3"]
-        CSV.write("C:/Users/Santeri/Desktop/10-par-25-round.csv", DataFrame(pars', labels))
-        data = CSV.read("C:/Users/Santeri/Desktop/10-par-25-round.csv", DataFrame)
+        labels = ["ϕ","γ","δ","θ","σ","β10","β11","β20","β21"]
+        # CSV.write("C:/Users/Santeri/Desktop/9-par-5-round.csv", DataFrame(pars', labels))
+        # data = CSV.read("C:/Users/Santeri/Desktop/9-par-5-round.csv", DataFrame)
+        data = DataFrame(pars', labels)
         RenewalInference.plot_paramdist(data, par)
-        save("C:/Users/Santeri/Desktop/param_dist-25.png", RenewalInference.plot_paramdist(data, par))
+        save("C:/Users/Santeri/Desktop/param_dist-5.png", RenewalInference.plot_paramdist(data, par))
         
 
 
