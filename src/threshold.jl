@@ -1,45 +1,41 @@
 function thresholds(par, modeldata)
-    ϕ, σⁱ, γ, δ, θ = par
+    ϕ, γ, δ, θ = par
     c = modeldata.costs
     x = modeldata.x
     obsolence = modeldata.obsolence
     X = modeldata.X
     β = modeldata.β
     ngrid = modeldata.ngrid
+    s_data = modeldata.s_data
     
     
     T = length(c)
     N, M = size(x)
-    
+    σⁱ = hcat(ones(N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     V = zeros(eltype(par), T, ngrid)
-    r1 = collect(range(0, maximum(c), length=ngrid-1))
-    append!(r1, last(r1)+last(diff(r1)))
-   
+    # r1 = exp.(LinRange(log(.00001), log(maximum(c)+maximum(c)/ngrid), ngrid))
+    r1 = LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid)
+    
     r̄ = zeros(eltype(par), T)
 
     # # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
         V[T,:] = r1' .- c[T]
-        idx = IfElse.ifelse(
-            any(V[T,:].>zero(eltype(V))), 
-            findfirst(V[T,:].>zero(eltype(V))), 
-            1
-        )
-        m_idx = maximum([idx-1,1])
+        idx = findfirst(V[T,:].>zero(eltype(V)))
+        idx = isnothing(idx) ? 1 : idx
+        m_idx = max(idx-1,1)
 
         r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
             (V[T,idx]-V[T,m_idx]);
-        V[T,:] = maximum(hcat(V[T,:], zeros(length(V[T,:]))), dims=2)
+        V[T,:] = max(V[T,:], zeros(length(V[T,:])))
     end
 
     # μ, σ = log_norm_parametrisation(par, T)
     μ, σ = initial_shock_parametrisation(par, X)
 
-    if ~modeldata.controller.x_transformed
-        modeldata.controller.x_transformed = true
-        x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-        x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
-    end
+    repopulate_x!(modeldata)
+    x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
+    x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     o = obsolence .≤ θ
     
     temp4 = zeros(eltype(V), N, ngrid)
