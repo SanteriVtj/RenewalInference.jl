@@ -30,17 +30,17 @@ function patenthz(par, modeldata)
     
     inno_shock = mean(s, dims=1)
     
-    # @Threads.threads for i in 1:length(eachrow(r))
+    @Threads.threads for i in 1:length(eachrow(r))
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] = o[:,t-1].*max(δ.*r[:,t-1], s[:,t-1]) # concat as n×2 matrix and choose maximum in for each row
+        r[i,t] = o[i,t-1].*max(δ.*r[i,t-1], s[i,t-1]) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
-        r[:,t] = r[:,t].*r_d[:,t-1]
+        r[i,t] = r[i,t].*r_d[i,t]
         # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] = r[:,t] .> r̄[t]
+        r_d[i,t] = r[i,t] .> r̄[t]
         # ℓ[:,t] = likelihood(r, r̄, t, ν)
     end
-    # end
+    end
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
     
     survive = vec(sum(ℓ', dims=2))
@@ -68,10 +68,13 @@ function patenthz(par, modeldata)
         return (
             fval,
             ehz,
-            survive,
             inno_shock,
-            r
+            r,
+            r_d,
+            ℓ
         )
+    elseif modeldata.controller.ae_mode
+        return sum(r_d, dims=2)
     end
 
     return fval
