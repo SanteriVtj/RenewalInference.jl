@@ -2,10 +2,10 @@
     @test let
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
         using OptimizationBBO, Interpolations, OptimizationNLopt
-        par = [.9, .5, .9, .9];
+        par = [.9, .4, .95, .95];
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # append!(par, [2., 8, 0.1, 0.2, -.3])
-        append!(par, [1., 1., 1., 2_000, 5])
+        append!(par, [2., 2., 1., 20_000, 5])
         N=30000;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
@@ -36,33 +36,56 @@
             X,
             dσ,
             controller = ModelControl(
-                true,   # simulation
-                false,  # x_transformed
-                true    # debug
+                simulation=true
             ),
             alg=Uniform()
         )
         x=patenthz(par,md_sim)
+        emp_stopping = sum(x[end], dims=2)
+        emp_data = hcat(prepare_data(md_sim), emp_stopping)
         Plots.plot(x[1])
 
+        ae_data = AEData(emp_data)
         md = ModelData(
             vec(x[1]),
             Vector{Float64}(c),
             X,
-            dσ
+            dσ,
+            controller = ModelControl(
+                ae_mode = true
+            )
         )
         y = patenthz(par,md)
+
+        x0 = par .+ par./50 .* (-1).^rand(0:1, 9)
+        @time ae_res = Optim.optimize(
+            (a)->AEloss(
+                a,
+                md, 
+                ae_data,
+                save="C:/Users/Santeri/Desktop/rand-par-ae-estimate.csv"
+            ),
+            [0.,    0, 0,  0,  0,  0,      -Inf,   -Inf,  -Inf],
+            [1.,    1, 1,  1,  1,  Inf,    Inf,    Inf,    Inf],
+            x0, 
+            NelderMead(),
+            Optim.Options(
+                x_tol=1e-2,
+                g_tol=1e-2,
+                f_tol=1e-2,
+                store_trace=true
+            )
+        )
         
         opt_patent = OptimizationFunction(
-            (a,x)->patenthz(a,md),
-            Optimization.AutoForwardDiff(),
+            (a,x)->patenthz(a,md)
         )
         
         res = Dict()
-        @time for i in 1:2 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
+        @time for i in 1:1 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i
             # x0 = collect(Iterators.flatten(rand.(p0, 1)))
-            x0 = par .+ par./20 .* (-1).^rand(0:1, 9)
+            x0 = par .+ par./50 .* (-1).^rand(0:1, 9)
 
             prob = OptimizationProblem(
                 opt_patent,
@@ -97,25 +120,6 @@
         Plots.plot(m, color="grey",legend=false)
         Plots.plot!(x[1], color="red", linewidth=2, legend=false)
         savefig("C:/Users/Santeri/Desktop/hz-25.png")
-        labels = ["ϕ","σⁱ","γ","δ","θ"]
-        CSV.write("C:/Users/Santeri/Desktop/lbfgs-75-20-50-95-95.csv", DataFrame(pars', labels))
-        kde(par'[:,1])
-
-        data = CSV.read("C:/Users/Santeri/Desktop/lbfgs-75-20-50-95-95.csv", DataFrame)
-        data = rename(data, Dict(zip(names(data), labels)))
-        RenewalInference.plot_paramdist(data, [.75, 20000,.5,.95,.95])
-
-
-        # res=optimize(
-        #     init0->patenthz(
-        #         init0,
-        #         empirical_hz,
-        #         ishock,
-        #         obsolence,
-        #         c
-        #     )[1],
-        #     collect(Iterators.flatten(rand.(p0, 1)))
-        # )
     end
 
     @test let
@@ -124,24 +128,3 @@
         (typeof(x[1])==Vector{Float64})&(typeof(x[2])==Vector{Float64})
     end
 end
-
-Plots.plot(
-    [0,1],
-    [.75,.4]
-)
-Plots.plot!(
-    [0,1],
-    [.65,.55],
-    xtickfontcolor=:white,
-    ytickfontcolor=:white,
-    xlim=(0,1),
-    ylim=(0,1),
-    legend=false,
-    xlabel=L"\varepsilon",
-    ylabel=L"EU"
-)
-annotate!(-.045, .75, L"u_a")
-annotate!(1-.045, .4, L"u_c")
-annotate!(-.045, .65, L"u_b")
-annotate!(1-.045, .55, L"u_d")
-savefig("C:/Users/Santeri/Desktop/Behvioral-theory-hw3.png")
