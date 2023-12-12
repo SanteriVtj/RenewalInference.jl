@@ -1,9 +1,9 @@
 module RenewalInference
 
     using StatsBase, Distributions, 
-        QuasiMonteCarlo, Random, Interpolations, DualNumbers,
+        QuasiMonteCarlo, Random, Interpolations,
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
-        IfElse
+        MLJ, AdversialEstimation, SimpleChains, CSV
 
     include("model_struct.jl")
     include("model.jl")
@@ -12,6 +12,7 @@ module RenewalInference
     include("patenthz.jl")
     include("hz_functions.jl")
     include("util.jl")
+    include("AE_estimation.jl")
     
     
     export NormModel,
@@ -23,5 +24,9 @@ module RenewalInference
         patentSMM,
         ModelData,
         ModelControl,
-        plot_paramdist
+        plot_paramdist,
+        AEestimation,
+        AEData,
+        AEloss,
+        prepare_data
 end

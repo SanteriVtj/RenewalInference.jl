@@ -1,8 +1,8 @@
 mutable struct ModelControl
     simulation::Bool
-    x_transformed::Bool
     debug::Bool
-    ModelControl(simulation=false, x_transformed=false, debug=false) = new(simulation, x_transformed, debug)
+    ae_mode::Bool
+    ModelControl(;simulation=false, debug=false, ae_mode=false) = new(simulation, debug, ae_mode)
 end
 
 struct ModelData{T<:AbstractFloat}
@@ -61,4 +61,34 @@ end
 function repopulate_x!(md::ModelData)
     N,K = size(md.x)
     @views md.x[:,:] = Matrix(QuasiMonteCarlo.sample(N,K,md.alg)')
+end
+
+function prepare_data(md::ModelData)
+    s_data = md.s_data
+    X = md.X
+
+    x = hcat(s_data, X)
+
+    return x
+end
+
+struct AEData{T<:AbstractFloat}
+    Xₑ::Matrix{T}
+    Yₑ::Matrix{T}
+    Yₘ::Matrix{T}
+    function AEData{T}(Xₑ, Yₑ, Yₘ) where {T<:AbstractFloat}
+        size(Xₑ, 1) == size(Yₑ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
+        size(Xₑ, 1) == size(Yₘ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
+        
+        new(Xₑ, Yₑ, Yₘ)
+    end
+end
+
+function AEData(Xₑ::Matrix{T}) where {T<:AbstractFloat}
+    N, K = size(Xₑ)
+
+    Yₑ = ones(T, N, 1)
+    Yₘ = zeros(T, N, 1)
+
+    return AEData{T}(Xₑ, Yₑ, Yₘ)
 end
