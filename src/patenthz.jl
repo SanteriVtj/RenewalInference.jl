@@ -25,11 +25,12 @@ function patenthz(par, modeldata)
         r[:,1] .= x[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
         s = x[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
         r_d[:,1] .= r[:,1] .≥ r̄[1]
+        r[:,1] .= r[:,1].*r_d[:,1]
     end
+
     o = obsolence .≤ θ
     
     inno_shock = mean(s, dims=1)
-    
     @Threads.threads for i in 1:length(eachrow(r))
         @inbounds for t=2:T
             # compute patent value at t by maximizing between learning shocks and depreciation
@@ -45,13 +46,13 @@ function patenthz(par, modeldata)
     
     survive = vec(sum(ℓ', dims=2))
     ehz = modelhz(survive, S)
-    
+
     if modeldata.controller.ae_mode
-        return sum(r_d, dims=2)
+        return ehz#sum(r_d, dims=2)
     elseif modeldata.controller.simulation
         modeldata.hz[:] .= modelhz(sum(r_d, dims=1)', S)
         return (
-            modelhz(sum(r_d, dims=1)', S),
+            ehz, # modelhz(sum(r_d, dims=1)', S),
             r, 
             r_d
         )
@@ -88,7 +89,7 @@ function initial_shock_parametrisation(par, X)
 
     N = size(X,1)
     
-    μ = hcat(ones(N),X)*β
+    μ = hcat(ones(eltype(par),N),X)*β
     
     return (μ, σ)
 end

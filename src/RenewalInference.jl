@@ -3,7 +3,7 @@ module RenewalInference
     using StatsBase, Distributions, 
         QuasiMonteCarlo, Random, Interpolations,
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
-        MLJ, AdversialEstimation, SimpleChains, CSV
+        MLJ, AdversialEstimation, SimpleChains, CSV, Distances
 
     include("model_struct.jl")
     include("model.jl")

@@ -5,7 +5,7 @@ mutable struct ModelControl
     ModelControl(;simulation=false, debug=false, ae_mode=false) = new(simulation, debug, ae_mode)
 end
 
-struct ModelData{T<:AbstractFloat}
+struct ModelData{T<:Real}
     hz::Vector{T}
     costs::Vector{T}
     X::Matrix{T}
@@ -20,7 +20,7 @@ struct ModelData{T<:AbstractFloat}
     function ModelData{T}(
         hz, costs, X, s_data, x, obsolence, ngrid, controller;
         ν=2., β=.95, alg=QuasiMonteCarlo.HaltonSample()
-    ) where {T<:AbstractFloat}
+    ) where {T<:Real}
         # Define dimensions
         t = length(hz)
         N = size(X, 1)
@@ -44,7 +44,7 @@ end
 # and other preallocated matrices.
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=500, controller=ModelControl()
-) where {T<:AbstractFloat}
+) where {T<:Real}
     # Inference dimensions for simulation draws
     N = size(X, 1)
     t = length(hz)
