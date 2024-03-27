@@ -27,7 +27,7 @@ function thresholds(par, modeldata, x, obsolence)
 
     o = obsolence .≤ θ
     temp4 = zeros(eltype(V), N, ngrid)
-    @inbounds for t=T-1:-1:1
+    @inbounds @Threads.threads for t=T-1:-1:1
         # Allocation for temp variables
         temp1 = δ.*r1
         temp2 = @view x[:,t]

@@ -55,8 +55,8 @@
         md = ModelData(
             x[1],
             Vector{Float64}(c),
-            X,
-            dσ,
+            repeat(X,20,1),
+            repeat(dσ,20,1),
             controller = ModelControl(),
             β=.0
         )
@@ -78,8 +78,8 @@
         # δ = 0.2 #decay rate of returns
         # β = [0.1,0.2,-.3]
         # optF = OptimizationFunction((a,x)->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md))
-        optF = OptimizationFunction((a,x)->patenthz([.0, .0, .8, 1., 2, 8, .1, .2, a[1], 0, 0],md))
-        prob = OptimizationProblem(optF, [.5], [0])
+        optF = OptimizationFunction((a,x)->patenthz([.0, .0, .8, 1., 2, 8, .1, .2, a[1], 0, 0],md), Optimization.AutoForwardDiff())
+        prob = OptimizationProblem(optF, [.5], [0], )
         @time res = solve(prob, LBFGS())
 
         ForwardDiff.gradient(a->patenthz(a,md_sim), par)
