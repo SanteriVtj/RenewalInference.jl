@@ -30,8 +30,7 @@ function patenthz(par, modeldata)
     
     r = zeros(eltype(par), N, T)
     r_d = zeros(eltype(par), N, T)
-    # r̄ = thresholds(par, modeldata, shocks, obsolence)
-    r̄ = modeldata.costs
+    r̄ = thresholds(par, modeldata, shocks, obsolence)
 
     @inbounds begin
         r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
