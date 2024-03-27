@@ -10,16 +10,17 @@ struct ModelData{T<:Real}
     costs::Vector{T}
     X::Matrix{T}
     s_data::Matrix{T}
-    x::Matrix{T}
-    obsolence::Matrix{T}
+    x::Array{T}
+    obsolence::Array{T}
     ν::T
     β::T
     ngrid::Int
     controller::ModelControl
     alg::Union{Sampleable, SamplingAlgorithm}
+    S::Int
     function ModelData{T}(
         hz, costs, X, s_data, x, obsolence, ngrid, controller;
-        ν=2., β=.95, alg=QuasiMonteCarlo.HaltonSample()
+        ν=2., β=.95, alg=QuasiMonteCarlo.HaltonSample(), S=1000
     ) where {T<:Real}
         # Define dimensions
         t = length(hz)
@@ -36,7 +37,7 @@ struct ModelData{T<:Real}
         N == size(s_data, 1) ? nothing : throw(AssertionError("Number of observations and data for σⁱ doesn't match."))
         
         # If all tests are satisfied, create new instance
-        new(hz, costs, X, s_data, x, obsolence, ν, β, ngrid, controller, alg)
+        new(hz, costs, X, s_data, x, obsolence, ν, β, ngrid, controller, alg, S)
     end
 end
 
@@ -44,15 +45,17 @@ end
 # and other preallocated matrices.
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=5000, controller=ModelControl(),
-    β=.95
+    β=.95, S=1000
 ) where {T<:Real}
     # Inference dimensions for simulation draws
     N = size(X, 1)
     t = length(hz)
 
     # Generate quasi monte carlo draws
-    obsolence = Matrix(QuasiMonteCarlo.sample(N,t-1,alg)')
-    x = Matrix(QuasiMonteCarlo.sample(N,t,alg)')
+    # obsolence = QuasiMonteCarlo.sample(S,t-1,alg)
+    obsolence = repeat(reshape(QuasiMonteCarlo.sample(S,1,alg), (1,1,:)), N, t-1,1)
+    # x = QuasiMonteCarlo.sample(S,t,alg)
+    x = repeat(reshape(QuasiMonteCarlo.sample(S,1,alg), (1,1,:)), N, t,1)
 
     return ModelData{T}(
         hz, costs, X, s_data, x, obsolence, ngrid, controller, alg=alg, β=β

@@ -18,9 +18,6 @@ function patenthz(par, modeldata)
     X = modeldata.X
 
     μ, σ = initial_shock_parametrisation(par, X)
-    
-    obsolence = QuasiMonteCarlo.sample(N,T-1,modeldata.alg)'
-    x = QuasiMonteCarlo.sample(N,T,modeldata.alg)'
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
@@ -30,8 +27,7 @@ function patenthz(par, modeldata)
     
     r = zeros(eltype(par), N, T)
     r_d = zeros(eltype(par), N, T)
-    # r̄ = thresholds(par, modeldata, shocks, obsolence)
-    r̄ = modeldata.costs
+    r̄ = thresholds(par, modeldata, shocks, obsolence)
 
     @inbounds begin
         r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
