@@ -13,7 +13,7 @@
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
         par = [.0, .0, .8, 1.];
-        append!(par, [2., 1.8, .1, .2, -.3, 0, 0])
+        append!(par, [2., 8., .1, .2, -.3, 0, 0])
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
@@ -48,22 +48,56 @@
             controller = ModelControl(
                 simulation=true
             ),
-            alg=Uniform()
+            alg=Uniform(),
+            β=0.
         )
-        ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim), .5)
+        x=patenthz(par,md_sim)
+        md = ModelData(
+            x[1],
+            Vector{Float64}(c),
+            X,
+            dσ,
+            controller = ModelControl(),
+            β=.0
+        )
+        # md_sim_dual = ModelData(
+        #     zeros(ForwardDiff.Dual, 17),
+        #     Vector{ForwardDiff.Dual}(c),
+        #     convert(Matrix{ForwardDiff.Dual}, X),
+        #     convert(Matrix{ForwardDiff.Dual}, dσ)
+        # )
+        # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim), .5)
+        # patenthz([.0, .0, .5, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim)
+        # ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
+
+        # s = reverse(cumsum(rand(1:50, 10)))
+        # s = [284,255,249,246,205,161,114,76,72,24]
+        # ForwardDiff.jacobian(s->RenewalInference.modelhz(s, 300), [284,255,249,246,205,161,114,76,0,0])
+        # α = 8. #mean of initial returns
+        # σ = 2 #standard deviation of initial returns
+        # δ = 0.2 #decay rate of returns
+        # β = [0.1,0.2,-.3]
+        # optF = OptimizationFunction((a,x)->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md))
+        optF = OptimizationFunction((a,x)->patenthz([.0, .0, .8, 1., 2, 8, .1, .2, a[1], 0, 0],md))
+        prob = OptimizationProblem(optF, [.5], [0])
+        @time res = solve(prob, LBFGS())
+
+        ForwardDiff.gradient(a->patenthz(a,md_sim), par)
         ForwardDiff.derivative(a->quantile(LogNormal(a,2), .2), .5)
+
         x=patenthz(par,md_sim)
         emp_stopping = findfirst.(eachrow(x[end].!=1))
-        emp_stopping[emp_stopping.==nothing] .= length(c)
-        stop_count = [get(countmap(emp_stopping), i, 0) for i in 1:17]
-        emp_data = hcat(prepare_data(md_sim), emp_stopping)
+        emp_stopping[emp_stopping.==nothing] .= length(c)+1
+        stop_count = [get(countmap(emp_stopping), i, 0) for i in 1:Int(maximum(emp_stopping))]
         Plots.plot(x[1], labels=false)
-
-        Plots.bar([get(countmap(emp_stopping), i, 0) for i in 1:17], alpha=.5, label="Stochastic")
-        Plots.bar!([get(countmap(data_stopping), i, 0) for i in 1:17], alpha=.5, label="Static")
-
-        println(ChisqTest([countmap(emp_stopping)[i] for i in 1:17], [countmap(data_stopping)[i] for i in 1:17]))
-
+        
+        Plots.bar([get(countmap(emp_stopping), i, 0) for i in 1:Int(maximum(emp_stopping))], alpha=.5, label="Stochastic")
+        # Plots.bar(emp_stopping.-[0;emp_stopping[1:end-1]], alpha=.5, label="Stochastic")
+        Plots.bar!([get(countmap(data_stopping), i, 0) for i in 1:Int(maximum(data_stopping))], alpha=.5, label="Static")
+        
+        println(ChisqTest([countmap(emp_stopping)[i] for i in 1:Int(maximum(data_stopping))], [countmap(data_stopping)[i] for i in 1:Int(maximum(data_stopping))]))
+        
+        # emp_data = hcat(prepare_data(md_sim), emp_stopping)
         # ae_data = AEData(emp_data)
         md = ModelData(
             vec(x[1]),

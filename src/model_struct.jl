@@ -43,7 +43,8 @@ end
 # Function for generating new instance of ModelData with default (Halton)samples
 # and other preallocated matrices.
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T};
-    alg=QuasiMonteCarlo.HaltonSample(), ngrid=500, controller=ModelControl()
+    alg=QuasiMonteCarlo.HaltonSample(), ngrid=5000, controller=ModelControl(),
+    β=.95
 ) where {T<:Real}
     # Inference dimensions for simulation draws
     N = size(X, 1)
@@ -54,7 +55,7 @@ function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix
     x = Matrix(QuasiMonteCarlo.sample(N,t,alg)')
 
     return ModelData{T}(
-        hz, costs, X, s_data, x, obsolence, ngrid, controller, alg=alg
+        hz, costs, X, s_data, x, obsolence, ngrid, controller, alg=alg, β=β
     )
 end
 

@@ -1,25 +1,20 @@
-function thresholds(par, modeldata)
+function thresholds(par, modeldata, x, obsolence)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
-    x = modeldata.x
-    obsolence = modeldata.obsolence
     X = modeldata.X
     β = modeldata.β
     ngrid = modeldata.ngrid
-    s_data = modeldata.s_data
-    
+    # s_data = modeldata.s_data
     
     T = length(c)
     N, M = size(x)
-    @show par[10:11]
-    σⁱ = hcat(ones(eltype(s_data), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     V = zeros(eltype(par), T, ngrid)
-    # r1 = exp.(LinRange(log(.00001), log(maximum(c)+maximum(c)/ngrid), ngrid))
+    
     r1 = LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid)
     
     r̄ = zeros(eltype(par), T)
 
-    # # Compute values for t=T i.e. the last period from which the backwards induction begins
+    # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
         V[T,:] = r1' .- c[T]
         idx = findfirst(V[T,:].>zero(eltype(V)))
@@ -30,12 +25,6 @@ function thresholds(par, modeldata)
         V[T,:] = max(V[T,:], zeros(length(V[T,:])))
     end
 
-    # μ, σ = log_norm_parametrisation(par, T)
-    μ, σ = initial_shock_parametrisation(par, X)
-
-    repopulate_x!(modeldata)
-    x[:,1] .= quantile.(LogNormal.(μ, σ), x[:,1])
-    x[:,2:end] .= -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
     o = obsolence .≤ θ
     temp4 = zeros(eltype(V), N, ngrid)
     @inbounds for t=T-1:-1:1

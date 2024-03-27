@@ -10,20 +10,32 @@ function patenthz(par, modeldata)
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
     ϕ, γ, δ, θ = par
-    obsolence = modeldata.obsolence
-    x = modeldata.x
     ν = modeldata.ν
     hz = modeldata.hz
     T = length(hz)
-    S = size(x, 1)
+    N = size(modeldata.X,1)
+    s_data = modeldata.s_data
+    X = modeldata.X
 
-    r = zeros(eltype(par), S, T)
-    r_d = zeros(eltype(par), S, T)
-    r̄ = thresholds(par, modeldata)
+    μ, σ = initial_shock_parametrisation(par, X)
+    
+    obsolence = QuasiMonteCarlo.sample(N,T-1,modeldata.alg)'
+    x = QuasiMonteCarlo.sample(N,T,modeldata.alg)'
+
+    σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
+    
+    shocks = zeros(eltype(par), N, T)
+    shocks[:,1] = quantile.(LogNormal.(μ, σ), x[:,1])
+    shocks[:,2:end] = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    
+    r = zeros(eltype(par), N, T)
+    r_d = zeros(eltype(par), N, T)
+    # r̄ = thresholds(par, modeldata, shocks, obsolence)
+    r̄ = modeldata.costs
 
     @inbounds begin
-        r[:,1] .= x[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
-        s = x[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+        r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
+        s = shocks[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
         r_d[:,1] .= r[:,1] .≥ r̄[1]
         r[:,1] .= r[:,1].*r_d[:,1]
     end
@@ -43,14 +55,19 @@ function patenthz(par, modeldata)
         end
     end
     ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
-    
     survive = vec(sum(ℓ', dims=2))
-    ehz = modelhz(survive, S)
+    survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
+    
+    ehz = modelhz(survive, N)
+    
+    if eltype(ehz)<:ForwardDiff.Dual
+        ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
+    end
 
     if modeldata.controller.ae_mode
         return ehz#sum(r_d, dims=2)
     elseif modeldata.controller.simulation
-        modeldata.hz[:] .= modelhz(sum(r_d, dims=1)', S)
+        modeldata.hz[:] .= modelhz(sum(r_d, dims=1)', N)
         return (
             ehz, # modelhz(sum(r_d, dims=1)', S),
             r, 
@@ -59,10 +76,14 @@ function patenthz(par, modeldata)
     end
 
     @inbounds begin
-        ehz[isnan.(ehz)] .= 0.
+        ehz[isnan.(ehz)] .= zero(eltype(ehz))
         err = ehz[2:end]-hz[2:end]
-        err[isnan.(err)] .= 0
-        W = Diagonal(sqrt.(survive[2:end]./S))
+        err[isnan.(err)] .= zero(eltype(err))
+        w = sqrt.(survive[2:end]./N)
+        if eltype(w)<:ForwardDiff.Dual
+            w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
+        end
+        W = Diagonal(w)
         fval = (err'*W*err)[1]
         fval = isnan(fval) ? Inf : fval
     end
