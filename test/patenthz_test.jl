@@ -12,19 +12,20 @@
         N=30000;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
-        par = [.0, .0, .8, 1.];
+        par = [.8, .4, .8, 1.];
         append!(par, [2., 8., .1, .2, -.3, 0, 0])
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
         data_stopping = X[:, "renewals"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
-        X=Matrix(X[:,["age", "sex", "humanities"]])
+        X=zeros(N,3)# Matrix(X[:,["age", "sex", "humanities"]])
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
         # X = rand(Normal(0, 1), N, 1);
         RenewalInference.initial_shock_parametrisation(par, X)
 
         dσ = rand(Normal(0, 1), N, 1);
+        par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
 
         p0 = [
             Uniform(.5,.8),
@@ -49,7 +50,7 @@
                 simulation=true
             ),
             alg=Uniform(),
-            β=0.
+            β=.0
         )
         x=patenthz(par,md_sim)
         md = ModelData(
@@ -66,7 +67,7 @@
         #     convert(Matrix{ForwardDiff.Dual}, X),
         #     convert(Matrix{ForwardDiff.Dual}, dσ)
         # )
-        # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim), .5)
+        # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, a, 0, 0],md), .5)
         # patenthz([.0, .0, .5, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim)
         # ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
 

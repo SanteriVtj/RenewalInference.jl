@@ -1,10 +1,8 @@
 function thresholds(par, modeldata, x, obsolence)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
-    X = modeldata.X
     β = modeldata.β
     ngrid = modeldata.ngrid
-    # s_data = modeldata.s_data
     
     T = length(c)
     N, M = size(x)
