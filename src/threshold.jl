@@ -27,12 +27,12 @@ function thresholds(par, modeldata, x, obsolence)
 
     o = obsolence .≤ θ
     temp4 = zeros(eltype(V), N, ngrid)
-    @inbounds @Threads.threads for t=T-1:-1:1
+    @inbounds for t=T-1:-1:1
         # Allocation for temp variables
         temp1 = δ.*r1
-        temp2 = @view x[:,t]
-        temp3 = @view o[:,t]
-        interp = @views linear_interpolation(
+        temp2 = x[:,t]
+        temp3 = o[:,t]
+        interp = linear_interpolation(
             r1,
             V[t+1, :], 
             extrapolation_bc=Line()
@@ -50,8 +50,8 @@ function thresholds(par, modeldata, x, obsolence)
 end
 
 function _calctemp4!(temp4, temp1,temp2,temp3,interp)
-    Threads.@threads for i in 1:length(eachrow(temp4))
-        temp4[i,:] .= @views interp.(
+    for i in 1:length(eachrow(temp4))
+        temp4[i,:] .= interp.(
             temp3[i].*max.(temp1, temp2[i])
         )
     end

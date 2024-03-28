@@ -55,8 +55,8 @@
         md = ModelData(
             x[1],
             Vector{Float64}(c),
-            repeat(X,20,1),
-            repeat(dσ,20,1),
+            X,
+            dσ,
             controller = ModelControl(),
             β=.0
         )

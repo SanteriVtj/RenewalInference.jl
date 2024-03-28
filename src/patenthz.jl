@@ -31,6 +31,7 @@ function patenthz(par, modeldata)
     r = zeros(eltype(par), N, T)
     r_d = zeros(eltype(par), N, T)
     r̄ = thresholds(par, modeldata, shocks, obsolence)
+    return r̄
 
     @inbounds begin
         r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
@@ -42,7 +43,7 @@ function patenthz(par, modeldata)
     o = obsolence .≤ θ
     
     inno_shock = mean(s, dims=1)
-    @inbounds @Threads.threads for t=2:T
+    @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
         r[:,t] .= o[:,t-1].*max(δ.*r[:,t-1], s[:,t-1]) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
