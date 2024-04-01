@@ -26,13 +26,9 @@ struct ModelData{T<:Real}
         N = size(X, 1)
         
         # Test that each variable has correct time dimension
-        t == size(x, 2) ? nothing : throw(AssertionError("Length of hazards and simulation periods doesn't match."))
         t == length(costs) ? nothing : throw(AssertionError("Length of hazards and costs doesn't match."))
-        t == size(obsolence, 2) + 1 ? nothing : throw(AssertionError("Length of hazards and obsolences doesn't match."))
         
         # Test that each variable has correct sample size
-        N == size(obsolence, 1) ? nothing : throw(AssertionError("Number of observations and simulation obsolences doesn't match."))
-        N == size(x, 1) ? nothing : throw(AssertionError("Number of observations and simulation value sample doesn't match."))
         N == size(s_data, 1) ? nothing : throw(AssertionError("Number of observations and data for σⁱ doesn't match."))
         
         # If all tests are satisfied, create new instance
@@ -44,7 +40,7 @@ end
 # and other preallocated matrices.
 function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=5000, controller=ModelControl(),
-    β=.95
+    β=.95, S=1000
 ) where {T<:Real}
     # Inference dimensions for simulation draws
     N = size(X, 1)
@@ -52,7 +48,7 @@ function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix
 
     # Generate quasi monte carlo draws
     obsolence = Matrix(QuasiMonteCarlo.sample(N,t-1,alg)')
-    x = Matrix(QuasiMonteCarlo.sample(N,t,alg)')
+    x = QuasiMonteCarlo.sample(S,1,alg)
 
     return ModelData{T}(
         hz, costs, X, s_data, x, obsolence, ngrid, controller, alg=alg, β=β

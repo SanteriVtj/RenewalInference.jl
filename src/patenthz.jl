@@ -27,8 +27,10 @@ function patenthz(par, modeldata)
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
     shocks = zeros(eltype(par), N, T)
-    shocks[:,1] = quantile.(LogNormal.(μ, σ), x[:,1])
-    shocks[:,2:end] = -(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+    shocks[:,1] .= mapreduce(a->mean(quantile(a, x)), vcat, LogNormal.(μ, σ))
+    @inbounds for t in 2:T
+        shocks[:,t] .= mean(invF(x, t, ϕ, σⁱ, γ), dims=2)
+    end
     r = zeros(eltype(par), N, T)
     r_d = zeros(eltype(par), N, T)
     r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
@@ -112,3 +114,5 @@ function initial_shock_parametrisation(par, X)
     
     return (μ, σ)
 end
+
+invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
