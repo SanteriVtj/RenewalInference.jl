@@ -1,31 +1,48 @@
 function thresholds(par, modeldata, x, obsolence)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
-    β = modeldata.β
     ngrid = modeldata.ngrid
     
     N, T, S = size(x)
-    V = zeros(eltype(par), T, ngrid)
-    Vtot = zeros(eltype(par), T, ngrid)
     
-    r1 = LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid)
-    r̄ = zeros(eltype(par), T)
-    r̄tot = zeros(eltype(par), T)
+    r1 = collect(LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid))
 
     # Compute values for t=T i.e. the last period from which the backwards induction begins
     @inbounds begin 
-        V[T,:] = r1' .- c[T]
-        idx = findfirst(V[T,:].>zero(eltype(V)))
+        VT = vec(r1' .- c[T])
+        idx = findfirst(VT.>zero(eltype(par)))
         m_idx = max(idx-1,1)
 
-        r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
-            (V[T,idx]-V[T,m_idx]);
-        V[T,:] = max(V[T,:], zeros(length(V[T,:])))
+        r̄T = (r1[m_idx]*VT[idx]-r1[idx]*VT[m_idx])/
+            (VT[idx]-VT[m_idx]);
+        VT .= max(VT, zeros(ngrid))
+    end
+    o = obsolence .≤ θ
+
+    chunks = Iterators.partition(1:S, S÷Threads.nthreads())
+    tasks = map(chunks) do chunk
+        Threads.@spawn sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
     end
 
-    o = obsolence .≤ θ
-    for s in 1:S
-        # temp4 = zeros(eltype(V), N, ngrid)
+    r̄ = sum(reduce(hcat, fetch.(tasks)), dims=2)./S
+    
+    return r̄
+end
+
+function sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
+    β = modeldata.β
+    N, T, S = size(x)
+    ϕ, γ, δ, θ = par
+    c = modeldata.costs
+    ngrid = modeldata.ngrid
+    Vtot = zeros(eltype(par), T, ngrid)
+    r̄tot = zeros(eltype(par), T)
+
+    @inbounds for s in chunk
+        V = zeros(eltype(par), T, ngrid)
+        V[T,:] .= VT
+        r̄ = zeros(eltype(par), T)
+        r̄[T] = r̄T
         for t=T-1:-1:1
             # Allocation for temp variables
             interp = linear_interpolation(
@@ -33,34 +50,16 @@ function thresholds(par, modeldata, x, obsolence)
                 V[t+1, :], 
                 extrapolation_bc=Line()
             )
-            # temp1 = δ.*r1
-            # temp2 = x[:,t,s]
-            # temp3 = o[s]
-            # _calctemp4!(temp4,temp1,temp2,temp3,interp)
-            # mapreduce(,vcat,)
-            # temp5 = mean(temp4, dims=1)
-            # Compute patent values
-            # V[t,:] = r1'.-c[t].+β.*temp5
             V[t,:] = r1'.-c[t].+β.*mean(interp.(o[s]*max.(x[:,t,s],δ*r1')), dims=1)
             # Gather positive values
             idx = findfirst(V[t,:].>zero(eltype(V)))
-            r̄[t] = (idx == 1)  ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
+            m_idx = max(idx-1,1)
+            r̄[t] = (idx == 1)  ? 0. : (r1[m_idx]*V[t,idx]-r1[idx]*V[t,m_idx])/(V[t,idx]-V[t,m_idx])
             V[t,:] = maximum([V[t,:] zeros(ngrid)], dims=2)
         end
         Vtot+=V
         r̄tot+=r̄
     end
-    Vtot .= Vtot/S
-    r̄tot .= r̄tot/S
-    
-    return r̄tot
-    # return r̄
-end
 
-# function _calctemp4!(temp4, temp1,temp2,temp3,interp)
-#     for i in 1:length(eachrow(temp4))
-#         temp4[i,:] .= interp.(
-#             temp3.*max.(temp1, temp2[i])
-#         )
-#     end
-# end
+    return r̄tot
+end
