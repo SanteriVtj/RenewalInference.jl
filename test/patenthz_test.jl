@@ -69,7 +69,7 @@
         # )
         # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, a, 0, 0],md), .5)
         # patenthz([.0, .0, .5, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim)
-        # ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
+        ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
 
         # s = reverse(cumsum(rand(1:50, 10)))
         # s = [284,255,249,246,205,161,114,76,72,24]
@@ -84,7 +84,6 @@
         @time res = solve(prob, LBFGS())
 
         ForwardDiff.gradient(a->patenthz(a,md_sim), par)
-        ForwardDiff.derivative(a->quantile(LogNormal(a,2), .2), .5)
 
         x=patenthz(par,md_sim)
         emp_stopping = findfirst.(eachrow(x[end].!=1))
