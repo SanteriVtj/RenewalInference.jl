@@ -29,7 +29,6 @@ function patenthz(par, modeldata)
     
     shocks = zeros(eltype(par), N, T, S)
 
-    # shocks[:,1] .= mapreduce(a->mean(quantile(a, x)), vcat, LogNormal.(μ, σ))
     @inbounds for t in 2:T
         shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
         shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
@@ -45,14 +44,12 @@ function patenthz(par, modeldata)
 
     o = obsolence .≤ θ
     survivetot = zeros(eltype(par), T)
-    for s in 1:S
-        @inbounds begin
-            r[:,1] .= shocks[:,1,s]
-            r_d[:,1] .= r[:,1] .≥ r̄[1]
-            r[:,1] .= r[:,1].*r_d[:,1]
-        end
+    @inbounds for s in 1:S
+        r[:,1] .= shocks[:,1,s]
+        r_d[:,1] .= r[:,1] .≥ r̄[1]
+        r[:,1] .= r[:,1].*r_d[:,1]
 
-        @inbounds for t=2:T
+        for t=2:T
             # compute patent value at t by maximizing between learning shocks and depreciation
             r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t-1,s]) # concat as n×2 matrix and choose maximum in for each row
             # If patent wasn't active in t-1 it cannot be active in t
