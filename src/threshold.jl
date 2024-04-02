@@ -24,26 +24,28 @@ function thresholds(par, modeldata, x, obsolence)
     end
 
     o = obsolence .≤ θ
-    for s in 1:S    
-        temp4 = zeros(eltype(V), N, ngrid)
-        @inbounds for t=T-1:-1:1
+    for s in 1:S
+        # temp4 = zeros(eltype(V), N, ngrid)
+        for t=T-1:-1:1
             # Allocation for temp variables
             interp = linear_interpolation(
                 r1,
                 V[t+1, :], 
                 extrapolation_bc=Line()
             )
-            temp1 = δ.*r1
-            temp2 = x[:,t,s]
-            temp3 = o[s]
-            _calctemp4!(temp4,temp1,temp2,temp3,interp)
-            temp5 = mean(temp4, dims=1)
+            # temp1 = δ.*r1
+            # temp2 = x[:,t,s]
+            # temp3 = o[s]
+            # _calctemp4!(temp4,temp1,temp2,temp3,interp)
+            # mapreduce(,vcat,)
+            # temp5 = mean(temp4, dims=1)
             # Compute patent values
-            V[t,:] = r1'.-c[t].+β.*temp5
+            # V[t,:] = r1'.-c[t].+β.*temp5
+            V[t,:] = r1'.-c[t].+β.*mean(interp.(o[s]*max.(x[:,t,s],δ*r1')), dims=1)
             # Gather positive values
             idx = findfirst(V[t,:].>zero(eltype(V)))
             r̄[t] = (idx == 1)  ? 0. : (r1[idx-1]*V[t,idx]-r1[idx]*V[t,idx-1])/(V[t,idx]-V[t,idx-1])
-            V[t,:] = maximum([V[t,:] zeros(size(V[t,:]))], dims=2)
+            V[t,:] = maximum([V[t,:] zeros(ngrid)], dims=2)
         end
         Vtot+=V
         r̄tot+=r̄
@@ -55,10 +57,10 @@ function thresholds(par, modeldata, x, obsolence)
     # return r̄
 end
 
-function _calctemp4!(temp4, temp1,temp2,temp3,interp)
-    for i in 1:length(eachrow(temp4))
-        temp4[i,:] .= interp.(
-            temp3.*max.(temp1, temp2[i])
-        )
-    end
-end
+# function _calctemp4!(temp4, temp1,temp2,temp3,interp)
+#     for i in 1:length(eachrow(temp4))
+#         temp4[i,:] .= interp.(
+#             temp3.*max.(temp1, temp2[i])
+#         )
+#     end
+# end
