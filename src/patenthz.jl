@@ -18,6 +18,7 @@ function patenthz(par, modeldata)
     X = modeldata.X
     x = modeldata.x
     obsolence = modeldata.obsolence
+    S = length(x)
 
     μ, σ = initial_shock_parametrisation(par, X)
     
@@ -26,40 +27,43 @@ function patenthz(par, modeldata)
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
-    shocks = zeros(eltype(par), N, T)
-    shocks[:,1] .= mapreduce(a->mean(quantile(a, x)), vcat, LogNormal.(μ, σ))
+    shocks = zeros(eltype(par), N, T, S)
+
+    # shocks[:,1] .= mapreduce(a->mean(quantile(a, x)), vcat, LogNormal.(μ, σ))
+    shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
     @inbounds for t in 2:T
-        shocks[:,t] .= mean(invF(x, t, ϕ, σⁱ, γ), dims=2)
+        shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
     end
-    r = zeros(eltype(par), N, T)
-    r_d = zeros(eltype(par), N, T)
+    r = zeros(eltype(par), N, T, S)
+    r_d = zeros(eltype(par), N, T, S)
     r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
+    return r̄
+    for s in S
+        @inbounds begin
+            r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
+            s = shocks[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+            r_d[:,1] .= r[:,1] .≥ r̄[1]
+            r[:,1] .= r[:,1].*r_d[:,1]
+        end
 
-    @inbounds begin
-        r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
-        s = shocks[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
-        r_d[:,1] .= r[:,1] .≥ r̄[1]
-        r[:,1] .= r[:,1].*r_d[:,1]
+        o = obsolence .≤ θ
+        
+        @inbounds for t=2:T
+            # compute patent value at t by maximizing between learning shocks and depreciation
+            r[:,t] .= o[:,t-1].*max(δ.*r[:,t-1], s[:,t-1]) # concat as n×2 matrix and choose maximum in for each row
+            # If patent wasn't active in t-1 it cannot be active in t
+            r[:,t] .= r[:,t].*r_d[:,t-1]
+            # Patent is kept active if its value exceed the threshold o.w. set to zero
+            r_d[:,t] .= r[:,t] .> r̄[t]
+            # ℓ[:,t] = likelihood(r, r̄, t, ν)
+        end
+        ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
+        survive = vec(sum(ℓ', dims=2))
+        survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
+        
+        ehz = modelhz(survive, N)
     end
 
-    o = obsolence .≤ θ
-    
-    inno_shock = mean(s, dims=1)
-    @inbounds for t=2:T
-        # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= o[:,t-1].*max(δ.*r[:,t-1], s[:,t-1]) # concat as n×2 matrix and choose maximum in for each row
-        # If patent wasn't active in t-1 it cannot be active in t
-        r[:,t] .= r[:,t].*r_d[:,t-1]
-        # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] .= r[:,t] .> r̄[t]
-        # ℓ[:,t] = likelihood(r, r̄, t, ν)
-    end
-    ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
-    survive = vec(sum(ℓ', dims=2))
-    survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
-    
-    ehz = modelhz(survive, N)
-    
     if eltype(ehz)<:ForwardDiff.Dual
         ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
     end
