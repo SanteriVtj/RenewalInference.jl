@@ -30,55 +30,53 @@ function patenthz(par, modeldata)
     shocks = zeros(eltype(par), N, T, S)
 
     # shocks[:,1] .= mapreduce(a->mean(quantile(a, x)), vcat, LogNormal.(μ, σ))
-    shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
     @inbounds for t in 2:T
+        shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
         shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
     end
-    r = zeros(eltype(par), N, T, S)
-    r_d = zeros(eltype(par), N, T, S)
+    r = zeros(eltype(par), N, T)
+    r_d = zeros(eltype(par), N, T)
     r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
-    return r̄
-    for s in S
+
+    if modeldata.controller.simulation
+        rtot = zeros(eltype(par), N, T)
+        r_dtot = zeros(eltype(par), N, T)
+    end
+
+    o = obsolence .≤ θ
+    survivetot = zeros(eltype(par), T)
+    for s in 1:S
         @inbounds begin
-            r[:,1] .= shocks[:,1]# quantile.(LogNormal.(μ, σ), x[:,1])
-            s = shocks[:,2:end]#-(log.(1 .-x[:,2:end]).*ϕ.^(1:T-1)'.*σⁱ.-γ)
+            r[:,1] .= shocks[:,1,s]
             r_d[:,1] .= r[:,1] .≥ r̄[1]
             r[:,1] .= r[:,1].*r_d[:,1]
         end
 
-        o = obsolence .≤ θ
-        
         @inbounds for t=2:T
             # compute patent value at t by maximizing between learning shocks and depreciation
-            r[:,t] .= o[:,t-1].*max(δ.*r[:,t-1], s[:,t-1]) # concat as n×2 matrix and choose maximum in for each row
+            r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t-1,s]) # concat as n×2 matrix and choose maximum in for each row
             # If patent wasn't active in t-1 it cannot be active in t
             r[:,t] .= r[:,t].*r_d[:,t-1]
             # Patent is kept active if its value exceed the threshold o.w. set to zero
             r_d[:,t] .= r[:,t] .> r̄[t]
             # ℓ[:,t] = likelihood(r, r̄, t, ν)
         end
-        ℓ = cumprod(1 ./(1 .+exp.(-(r.-r̄')/ν)), dims=2)
-        survive = vec(sum(ℓ', dims=2))
-        survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
-        
-        ehz = modelhz(survive, N)
+        if modeldata.controller.simulation
+            rtot+=r
+            r_dtot+=r_d
+        end
+
+        survivetot += sum(r_d, dims=1)'
     end
+    survive = survivetot./S
+    survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
+    ehz = modelhz(survive, N)
 
     if eltype(ehz)<:ForwardDiff.Dual
         ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
     end
 
-    if modeldata.controller.ae_mode
-        return ehz#sum(r_d, dims=2)
-    elseif modeldata.controller.simulation
-        modeldata.hz[:] .= modelhz(sum(r_d, dims=1)', N)
-        return (
-            ehz, # modelhz(sum(r_d, dims=1)', S),
-            r, 
-            r_d
-        )
-    end
-
+    
     @inbounds begin
         ehz[isnan.(ehz)] .= zero(eltype(ehz))
         err = ehz[2:end]-hz[2:end]
@@ -92,14 +90,14 @@ function patenthz(par, modeldata)
         fval = isnan(fval) ? Inf : fval
     end
 
-    if modeldata.controller.debug
+    if modeldata.controller.ae_mode
+        return ehz#sum(r_d, dims=2)
+    elseif modeldata.controller.simulation
         return (
-            fval,
-            ehz,
-            inno_shock,
-            r,
-            r_d,
-            ℓ
+            ehz, # modelhz(sum(r_d, dims=1)', S),
+            r./S,
+            r_d./S,
+            r̄
         )
     end
 
