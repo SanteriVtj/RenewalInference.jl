@@ -33,8 +33,7 @@ function patenthz(par, modeldata)
         shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
         shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
     end
-    r = zeros(eltype(par), N, T)
-    r_d = zeros(eltype(par), N, T)
+    
     r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
 
     if modeldata.controller.simulation
@@ -43,29 +42,12 @@ function patenthz(par, modeldata)
     end
 
     o = obsolence .≤ θ
-    survivetot = zeros(eltype(par), T)
-    @inbounds for s in 1:S
-        r[:,1] .= shocks[:,1,s]
-        r_d[:,1] .= r[:,1] .≥ r̄[1]
-        r[:,1] .= r[:,1].*r_d[:,1]
-
-        for t=2:T
-            # compute patent value at t by maximizing between learning shocks and depreciation
-            r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t-1,s]) # concat as n×2 matrix and choose maximum in for each row
-            # If patent wasn't active in t-1 it cannot be active in t
-            r[:,t] .= r[:,t].*r_d[:,t-1]
-            # Patent is kept active if its value exceed the threshold o.w. set to zero
-            r_d[:,t] .= r[:,t] .> r̄[t]
-            # ℓ[:,t] = likelihood(r, r̄, t, ν)
-        end
-        if modeldata.controller.simulation
-            rtot+=r
-            r_dtot+=r_d
-        end
-
-        survivetot += sum(r_d, dims=1)'
+    
+    chunks = Iterators.partition(1:S, S÷Threads.nthreads())
+    tasks = map(chunks) do chunk
+        Threads.@spawn patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     end
-    survive = survivetot./S
+    survive = sum(reduce(hcat, fetch.(tasks)), dims=2)./S
     survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
     ehz = modelhz(survive, N)
 
@@ -115,3 +97,30 @@ function initial_shock_parametrisation(par, X)
 end
 
 invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
+
+function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
+    ϕ, γ, δ, θ = par
+    T = length(modeldata.hz)
+    survivetot = zeros(eltype(par), T)
+    N = size(modeldata.X,1)
+    @inbounds for s in chunk
+        r = zeros(eltype(par), N, T)
+        r_d = zeros(eltype(par), N, T)
+        r[:,1] .= shocks[:,1,s]
+        r_d[:,1] .= r[:,1] .≥ r̄[1]
+        r[:,1] .= r[:,1].*r_d[:,1]
+
+        for t=2:T
+            # compute patent value at t by maximizing between learning shocks and depreciation
+            r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t-1,s]) # concat as n×2 matrix and choose maximum in for each row
+            # If patent wasn't active in t-1 it cannot be active in t
+            r[:,t] .= r[:,t].*r_d[:,t-1]
+            # Patent is kept active if its value exceed the threshold o.w. set to zero
+            r_d[:,t] .= r[:,t] .> r̄[t]
+            # ℓ[:,t] = likelihood(r, r̄, t, ν)
+        end
+
+        survivetot += sum(r_d, dims=1)'
+    end
+    return survivetot
+end
