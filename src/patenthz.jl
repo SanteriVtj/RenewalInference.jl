@@ -10,7 +10,6 @@ function patenthz(par, modeldata)
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
     ϕ, γ, δ, θ = par
-    ν = modeldata.ν
     hz = modeldata.hz
     T = length(hz)
     N = size(modeldata.X,1)
@@ -21,25 +20,18 @@ function patenthz(par, modeldata)
     S = length(x)
 
     μ, σ = initial_shock_parametrisation(par, X)
-    
-    # obsolence = QuasiMonteCarlo.sample(N,T-1,modeldata.alg)'
-    # x = QuasiMonteCarlo.sample(N,T,modeldata.alg)'
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
     shocks = zeros(eltype(par), N, T, S)
 
+    shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
     @inbounds for t in 2:T
-        shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
         shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
     end
     
-    r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
-
-    if modeldata.controller.simulation
-        rtot = zeros(eltype(par), N, T)
-        r_dtot = zeros(eltype(par), N, T)
-    end
+    r̄ = modeldata.β==0 ? modeldata.costs : 
+    r̄ = thresholds(par, modeldata, shocks, obsolence)
 
     o = obsolence .≤ θ
     
@@ -47,7 +39,14 @@ function patenthz(par, modeldata)
     tasks = map(chunks) do chunk
         Threads.@spawn patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     end
-    survive = sum(reduce(hcat, fetch.(tasks)), dims=2)./S
+    val = fetch.(tasks)
+    # return val
+    survivetot = [val[i][1] for i in eachindex(val)]
+    rtot = [val[i][2] for i in eachindex(val)]
+    r_dtot = [val[i][3] for i in eachindex(val)]
+    r = reduce(+, rtot)./S
+    r_d = reduce(+, r_dtot)./S
+    survive = reduce(+, survivetot)./S
     survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
     ehz = modelhz(survive, N)
 
@@ -73,9 +72,9 @@ function patenthz(par, modeldata)
         return ehz#sum(r_d, dims=2)
     elseif modeldata.controller.simulation
         return (
-            ehz, # modelhz(sum(r_d, dims=1)', S),
-            r./S,
-            r_d./S,
+            ehz,
+            r,
+            r_d,
             r̄
         )
     end
@@ -101,8 +100,10 @@ invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
 function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     ϕ, γ, δ, θ = par
     T = length(modeldata.hz)
-    survivetot = zeros(eltype(par), T)
     N = size(modeldata.X,1)
+    survivetot = zeros(eltype(par), T)
+    rtot = zeros(eltype(par), N, T)
+    r_dtot = zeros(eltype(par), N, T)
     @inbounds for s in chunk
         r = zeros(eltype(par), N, T)
         r_d = zeros(eltype(par), N, T)
@@ -112,7 +113,7 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
 
         for t=2:T
             # compute patent value at t by maximizing between learning shocks and depreciation
-            r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t-1,s]) # concat as n×2 matrix and choose maximum in for each row
+            r[:,t] .= o[s].*max(δ.*r[:,t-1], shocks[:,t,s]) # concat as n×2 matrix and choose maximum in for each row
             # If patent wasn't active in t-1 it cannot be active in t
             r[:,t] .= r[:,t].*r_d[:,t-1]
             # Patent is kept active if its value exceed the threshold o.w. set to zero
@@ -121,6 +122,8 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
         end
 
         survivetot += sum(r_d, dims=1)'
+        rtot+=r
+        r_dtot+=r_d
     end
-    return survivetot
+    return (survivetot, rtot, r_dtot)
 end

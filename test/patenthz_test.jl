@@ -12,8 +12,7 @@
         N=500;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
-        par = [.9, .4, .8, .95];
-        append!(par, [2., 8., .1, .2, -.3, 2, 2])
+        par = [.85, .4, .8, .95, 2., 4., .1, .2, -.3, 2000, 1000];
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         X = X[1:500,:]
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
@@ -26,7 +25,7 @@
         # X = rand(Normal(0, 1), N, 1);
         RenewalInference.initial_shock_parametrisation(par, X)
 
-        dσ = rand(Normal(0, 1), N, 1);
+        dσ = float.(rand(Bernoulli(.75), N, 1));
         # par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
 
         p0 = [
@@ -53,16 +52,17 @@
             ),
             alg=Uniform(),
             β=.95,
-            S=10
+            S=500
         )
         x=patenthz(par,md_sim)
         md = ModelData(
-            x[1],
+            vec(x[1]),
             Vector{Float64}(c),
             X,
             dσ,
             controller = ModelControl(),
-            β=.95
+            β=.95,
+            S=500
         )
         # md_sim_dual = ModelData(
         #     zeros(ForwardDiff.Dual, 17),
@@ -72,7 +72,7 @@
         # )
         # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, a, 0, 0],md), .5)
         # patenthz([.0, .0, .5, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim)
-        # ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
+        ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
 
         # s = reverse(cumsum(rand(1:50, 10)))
         # s = [284,255,249,246,205,161,114,76,72,24]
@@ -87,7 +87,6 @@
         @time res = solve(prob, LBFGS())
 
         ForwardDiff.gradient(a->patenthz(a,md_sim), par)
-        ForwardDiff.derivative(a->quantile(LogNormal(a,2), .2), .5)
 
         x=patenthz(par,md_sim)
         emp_stopping = findfirst.(eachrow(x[end].!=1))
