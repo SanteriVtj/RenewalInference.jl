@@ -2,7 +2,7 @@
     @test let
         # Definitely not a test
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests
+        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures
         # ϕ, γ, δ, θ
         # par = [.9, .6, .9, .95];
         # append!(par, [5., .2, .1, 200, 3])
@@ -12,15 +12,15 @@
         N=500;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
-        par = [.85, .4, .8, .95, 2., 4., .1, .2, -.3, 2000, 1000];
+        par = [.85, .4, .8, .95, 2., 4., .1, .2, -.3, 1000, 1000];
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
-        X = X[1:500,:]
+        X = X[1:N,:]
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
-        data_stopping = X[:, "renewals"]
+        data_stopping = X[1:N, "renewals"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
         # X=zeros(N,3)
-        X=Matrix(X[:,["age", "sex", "humanities"]])
+        X=Matrix(X[1:N,["age", "sex", "humanities"]])
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
         # X = rand(Normal(0, 1), N, 1);
         RenewalInference.initial_shock_parametrisation(par, X)
@@ -47,6 +47,7 @@
             Vector{Float64}(c),
             X,
             dσ,
+            data_stopping,
             controller = ModelControl(
                 simulation=true
             ),
@@ -55,11 +56,16 @@
             S=500
         )
         x=patenthz(par,md_sim)
+        Plots.plot(x[end]', label=false)
+        Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
+        Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
+        Plots.plot!(x[end][vec(dσ.==0),:]',label=false,color=:darkblue,alpha=.2)
         md = ModelData(
-            vec(x[1]),
+            vec(mean(x[end], dims=1)),
             Vector{Float64}(c),
             X,
             dσ,
+            data_stopping,
             controller = ModelControl(),
             β=.95,
             S=500
