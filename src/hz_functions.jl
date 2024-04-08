@@ -10,8 +10,8 @@ function computehz(expirations)
     [0; hz[1:end-1]]
 end
 
-function modelhz(x, S)
-    cum_lapse = S .- x
+function modelhz(x, N)
+    cum_lapse = N .- x
     lapse = cum_lapse .- [zero(eltype(x)); cum_lapse[1:end-1]]
-    return lapse ./ [S; x[1:end-1]]
+    return lapse ./ [N; x[1:end-1]]
 end
