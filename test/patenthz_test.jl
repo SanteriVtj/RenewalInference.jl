@@ -9,23 +9,24 @@
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # append!(par, [2., 8, 0.1, 0.2, -.3])
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
-        N=30000;
+        N=500;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
-        par = [.8, .4, .8, 1.];
-        append!(par, [2., 8., .1, .2, -.3, 0, 0])
+        par = [.85, .4, .8, .95, 2., 4., .1, .2, -.3, 2000, 1000];
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
+        X = X[1:500,:]
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
         data_stopping = X[:, "renewals"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
-        X=zeros(N,3)# Matrix(X[:,["age", "sex", "humanities"]])
+        # X=zeros(N,3)
+        X=Matrix(X[:,["age", "sex", "humanities"]])
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
         # X = rand(Normal(0, 1), N, 1);
         RenewalInference.initial_shock_parametrisation(par, X)
 
-        dσ = rand(Normal(0, 1), N, 1);
-        par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
+        dσ = float.(rand(Bernoulli(.75), N, 1));
+        # par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
 
         p0 = [
             Uniform(.5,.8),
@@ -50,16 +51,18 @@
                 simulation=true
             ),
             alg=Uniform(),
-            β=.0
+            β=.95,
+            S=500
         )
         x=patenthz(par,md_sim)
         md = ModelData(
-            x[1],
+            vec(x[1]),
             Vector{Float64}(c),
             X,
             dσ,
             controller = ModelControl(),
-            β=.0
+            β=.95,
+            S=500
         )
         # md_sim_dual = ModelData(
         #     zeros(ForwardDiff.Dual, 17),
