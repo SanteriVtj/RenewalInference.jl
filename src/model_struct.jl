@@ -12,15 +12,15 @@ struct ModelData{T<:Real}
     s_data::Matrix{T}
     x::Matrix{T}
     obsolence::Matrix{T}
-    ν::T
     β::T
+    renewals::Vector{T}
     ngrid::Int
     controller::ModelControl
     alg::Union{Sampleable, SamplingAlgorithm}
     nt::Int
     function ModelData{T}(
-        hz, costs, X, s_data, x, obsolence, ngrid, controller, nt;
-        ν=2., β=.95, alg=QuasiMonteCarlo.HaltonSample()
+        hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, nt;
+        β=.95, alg=QuasiMonteCarlo.HaltonSample()
     ) where {T<:Real}
         # Define dimensions
         t = length(hz)
@@ -33,13 +33,13 @@ struct ModelData{T<:Real}
         N == size(s_data, 1) ? nothing : throw(AssertionError("Number of observations and data for σⁱ doesn't match."))
         
         # If all tests are satisfied, create new instance
-        new(hz, costs, X, s_data, x, obsolence, ν, β, ngrid, controller, alg, nt)
+        new(hz, costs, X, s_data, x, obsolence, β, renewals, ngrid, controller, alg, nt)
     end
 end
 
 # Function for generating new instance of ModelData with default (Halton)samples
 # and other preallocated matrices.
-function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T};
+function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T}, renewals::Vector{T};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=1000, controller=ModelControl(), nt=Threads.nthreads(),
     β=.95, S=1000
 ) where {T<:Real}
@@ -52,7 +52,7 @@ function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix
     x = QuasiMonteCarlo.sample(S,1,alg)
 
     return ModelData{T}(
-        hz, costs, X, s_data, x, obsolence, ngrid, controller, nt, alg=alg, β=β
+        hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, nt, alg=alg, β=β
     )
 end
 

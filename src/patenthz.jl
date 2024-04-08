@@ -17,6 +17,9 @@ function patenthz(par, modeldata)
     X = modeldata.X
     x = modeldata.x
     obsolence = modeldata.obsolence
+    data_stopping = modeldata.renewals
+    data_stopping = min.(data_stopping, T)
+    data_stopping = max.(data_stopping, 1)
     S = length(x)
 
     μ, σ = initial_shock_parametrisation(par, X)
@@ -30,8 +33,7 @@ function patenthz(par, modeldata)
         shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
     end
     
-    r̄ = modeldata.β==0 ? modeldata.costs : 
-    r̄ = thresholds(par, modeldata, shocks, obsolence)
+    r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
 
     o = obsolence .≤ θ
     
@@ -40,46 +42,53 @@ function patenthz(par, modeldata)
         Threads.@spawn patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     end
     val = fetch.(tasks)
-    # return val
-    survivetot = [val[i][1] for i in eachindex(val)]
-    rtot = [val[i][2] for i in eachindex(val)]
-    r_dtot = [val[i][3] for i in eachindex(val)]
+    rtot = [val[i][1] for i in eachindex(val)]
+    r_dtot = [val[i][2] for i in eachindex(val)]
     r = reduce(+, rtot)./S
     r_d = reduce(+, r_dtot)./S
-    survive = reduce(+, survivetot)./S
-    survive[survive.==zero(eltype(survive))] .= survive[survive.==zero(eltype(survive))].+1e-12
-    ehz = modelhz(survive, N)
 
-    if eltype(ehz)<:ForwardDiff.Dual
-        ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
+    all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
+    all_hz[findall(isnan.(all_hz))] .= 0
+    hzd = zeros(eltype(par), N, T)
+    hzd[CartesianIndex.(1:N, Int.(data_stopping))] .= 1
+    
+    err = abs.(all_hz.-hzd)
+    err = diag(err'*err)
+    fval = err'*err
+    
+    if modeldata.controller.simulation
+        return (r_d, r, all_hz)
+    else
+        return fval
     end
+    # if eltype(ehz)<:ForwardDiff.Dual
+    #     ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
+    # end
 
     
-    @inbounds begin
-        ehz[isnan.(ehz)] .= zero(eltype(ehz))
-        err = ehz[2:end]-hz[2:end]
-        err[isnan.(err)] .= zero(eltype(err))
-        w = sqrt.(survive[2:end]./N)
-        if eltype(w)<:ForwardDiff.Dual
-            w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
-        end
-        W = Diagonal(w)
-        fval = (err'*W*err)[1]
-        fval = isnan(fval) ? Inf : fval
-    end
+    # @inbounds begin
+    #     ehz[isnan.(ehz)] .= zero(eltype(ehz))
+    #     err = ehz[2:end]-hz[2:end]
+    #     err[isnan.(err)] .= zero(eltype(err))
+    #     w = sqrt.(survive[2:end]./N)
+    #     if eltype(w)<:ForwardDiff.Dual
+    #         w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
+    #     end
+    #     W = Diagonal(w)
+    #     fval = (err'*W*err)[1]
+    #     fval = isnan(fval) ? Inf : fval
+    # end
 
-    if modeldata.controller.ae_mode
-        return ehz#sum(r_d, dims=2)
-    elseif modeldata.controller.simulation
-        return (
-            ehz,
-            r,
-            r_d,
-            r̄
-        )
-    end
-
-    return fval
+    # if modeldata.controller.ae_mode
+    #     return ehz#sum(r_d, dims=2)
+    # elseif modeldata.controller.simulation
+    #     return (
+    #         ehz,
+    #         r,
+    #         r_d,
+    #         r̄
+    #     )
+    # end
 end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
@@ -101,7 +110,6 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     ϕ, γ, δ, θ = par
     T = length(modeldata.hz)
     N = size(modeldata.X,1)
-    survivetot = zeros(eltype(par), T)
     rtot = zeros(eltype(par), N, T)
     r_dtot = zeros(eltype(par), N, T)
     @inbounds for s in chunk
@@ -121,9 +129,8 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
             # ℓ[:,t] = likelihood(r, r̄, t, ν)
         end
 
-        survivetot += sum(r_d, dims=1)'
         rtot+=r
         r_dtot+=r_d
     end
-    return (survivetot, rtot, r_dtot)
+    return (rtot, r_dtot)
 end
