@@ -5,23 +5,23 @@ mutable struct ModelControl
     ModelControl(;simulation=false, debug=false, ae_mode=false) = new(simulation, debug, ae_mode)
 end
 
-struct ModelData{T<:Real}
-    hz::Vector{T}
-    costs::Vector{T}
-    X::Matrix{T}
-    s_data::Matrix{T}
-    x::Matrix{T}
-    obsolence::Matrix{T}
-    β::T
-    renewals::Vector{T}
-    ngrid::Int
+struct ModelData
+    hz::Vector{Float64}
+    costs::Vector{Float64}
+    X::Matrix{Float64}
+    s_data::Matrix{Float64}
+    x::Matrix{Float64}
+    obsolence::Matrix{Float64}
+    β::Float64
+    renewals::Vector{Float64}
+    ngrid::Int16
     controller::ModelControl
     alg::Union{Sampleable, SamplingAlgorithm}
-    nt::Int
-    function ModelData{T}(
+    nt::Int16
+    function ModelData(
         hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, nt;
         β=.95, alg=QuasiMonteCarlo.HaltonSample()
-    ) where {T<:Real}
+    )
         # Define dimensions
         t = length(hz)
         N = size(X, 1)
@@ -39,19 +39,19 @@ end
 
 # Function for generating new instance of ModelData with default (Halton)samples
 # and other preallocated matrices.
-function ModelData(hz::Vector{T}, costs::Vector{T}, X::Matrix{T}, s_data::Matrix{T}, renewals::Vector{T};
+function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float64}, s_data::Matrix{Float64}, renewals::Vector{Float64};
     alg=QuasiMonteCarlo.HaltonSample(), ngrid=1000, controller=ModelControl(), nt=Threads.nthreads(),
     β=.95, S=1000
-) where {T<:Real}
+)
     # Inference dimensions for simulation draws
     N = size(X, 1)
     t = length(hz)
 
     # Generate quasi monte carlo draws
-    obsolence = QuasiMonteCarlo.sample(S,1,alg)
+    obsolence = QuasiMonteCarlo.sample(S,t-1,alg)
     x = QuasiMonteCarlo.sample(S,1,alg)
 
-    return ModelData{T}(
+    return ModelData(
         hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, nt, alg=alg, β=β
     )
 end
@@ -70,11 +70,11 @@ function prepare_data(md::ModelData)
     return x
 end
 
-struct AEData{T<:AbstractFloat}
-    Xₑ::Matrix{T}
-    Yₑ::Matrix{T}
-    Yₘ::Matrix{T}
-    function AEData{T}(Xₑ, Yₑ, Yₘ) where {T<:AbstractFloat}
+struct AEData
+    Xₑ::Matrix{Float64}
+    Yₑ::Matrix{Float64}
+    Yₘ::Matrix{Float64}
+    function AEData(Xₑ, Yₑ, Yₘ)
         size(Xₑ, 1) == size(Yₑ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
         size(Xₑ, 1) == size(Yₘ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
         
@@ -82,11 +82,11 @@ struct AEData{T<:AbstractFloat}
     end
 end
 
-function AEData(Xₑ::Matrix{T}) where {T<:AbstractFloat}
+function AEData(Xₑ::Matrix{Float64})
     N, K = size(Xₑ)
 
     Yₑ = ones(T, N, 1)
     Yₘ = zeros(T, N, 1)
 
-    return AEData{T}(Xₑ, Yₑ, Yₘ)
+    return AEData(Xₑ, Yₑ, Yₘ)
 end

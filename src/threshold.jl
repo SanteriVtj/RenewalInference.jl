@@ -2,6 +2,7 @@ function thresholds(par, modeldata, x, obsolence)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
     ngrid = modeldata.ngrid
+    nt = modeldata.nt
     
     N, T, S = size(x)
     
@@ -19,13 +20,14 @@ function thresholds(par, modeldata, x, obsolence)
     end
     o = obsolence .≤ θ
 
-    chunks = Iterators.partition(1:S, S÷Threads.nthreads())
+    chunks = Iterators.partition(1:S, S÷nt)
     tasks = map(chunks) do chunk
         Threads.@spawn sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
     end
 
-    r̄ = sum(reduce(hcat, fetch.(tasks)), dims=2)./S
-    
+    tsk = fetch.(tasks)
+    rds = convert.(Float64, reduce(hcat, tsk))
+    r̄ = sum(rds, dims=2)./S
     return r̄
 end
 

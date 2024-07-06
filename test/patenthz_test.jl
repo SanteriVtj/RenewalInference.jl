@@ -53,7 +53,8 @@
             ),
             alg=Uniform(),
             β=.95,
-            S=500
+            S=10,
+            nt=10
         )
         x=patenthz(par,md_sim)
         Plots.plot(x[end]', label=false)
