@@ -17,9 +17,6 @@ function patenthz(par, modeldata)
     X = modeldata.X
     x = modeldata.x
     obsolence = modeldata.obsolence
-    data_stopping = modeldata.renewals
-    data_stopping = min.(data_stopping, T)
-    data_stopping = max.(data_stopping, 1)
     nt = modeldata.nt
     S = length(x)
 
@@ -38,30 +35,31 @@ function patenthz(par, modeldata)
 
     o = obsolence .≤ θ
     
-    chunks = Iterators.partition(1:S, S÷nt)
+    chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
         Threads.@spawn patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     end
     val = fetch.(tasks)
     rtot = [val[i][1] for i in eachindex(val)]
-    return rtot, r̄
     r_dtot = [val[i][2] for i in eachindex(val)]
     r = reduce(+, rtot)./S
     r_d = reduce(+, r_dtot)./S
 
     all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
     all_hz[findall(isnan.(all_hz))] .= 0
-    hzd = zeros(eltype(par), N, T)
-    hzd[CartesianIndex.(1:N, Int.(data_stopping))] .= 1
-    
-    err = abs.(all_hz.-hzd)
-    # err = abs.(all_hz.-hzd)
-    err = diag(err'*err)
-    fval = err'*err
     
     if modeldata.controller.simulation
         return (r_d, r, all_hz)
     else
+        data_stopping = modeldata.renewals
+        data_stopping = min.(data_stopping, T)
+        data_stopping = max.(data_stopping, 1)
+        hzd = zeros(eltype(par), N, T)
+        hzd[CartesianIndex.(1:N, Int.(data_stopping))] .= 1
+        err = abs.(all_hz.-hzd)
+        err = diag(err'*err)
+        fval = err'*err
+        
         return fval
     end
     if eltype(ehz)<:ForwardDiff.Dual

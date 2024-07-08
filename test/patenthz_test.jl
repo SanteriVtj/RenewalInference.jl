@@ -9,10 +9,11 @@
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # append!(par, [2., 8, 0.1, 0.2, -.3])
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
-        N=500;
+        N=1;
         # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
 
-        par = [.85, .4, .8, .95, 2., 4., .1, .2, -.3, 1000, 1000];
+        # par = [.85, .4, .8, .95, 2.5, 5., .1, .2, -.3, 1000, 1000];
+        par = [.85, .4, .8, .95, 2.5, 5., .1, 0, 1000];
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         X = X[1:N,:]
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
@@ -20,7 +21,8 @@
         data_stopping = X[1:N, "renewals"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
         # X=zeros(N,3)
-        X=Matrix(X[1:N,["age", "sex", "humanities"]])
+        # X=Matrix(X[1:N,["age", "sex", "humanities"]])
+        X = zeros(N,1)
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
         # X = rand(Normal(0, 1), N, 1);
         RenewalInference.initial_shock_parametrisation(par, X)
@@ -47,17 +49,17 @@
             Vector{Float64}(c),
             X,
             dσ,
-            data_stopping,
+            zeros(Float64, 17),
             controller = ModelControl(
                 simulation=true
             ),
             alg=Uniform(),
             β=.95,
-            S=10,
+            S=1,
             nt=10
         )
         x=patenthz(par,md_sim)
-        Plots.plot(x[end]', label=false)
+        Plots.plot(sum(x[end], dims=1)'/N, label=false)
         Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
         Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
         Plots.plot!(x[end][vec(dσ.==0),:]',label=false,color=:darkblue,alpha=.2)

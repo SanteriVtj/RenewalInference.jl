@@ -20,7 +20,7 @@ function thresholds(par, modeldata, x, obsolence)
     end
     o = obsolence .≤ θ
 
-    chunks = Iterators.partition(1:S, S÷nt)
+    chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
         Threads.@spawn sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
     end
