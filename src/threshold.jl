@@ -1,10 +1,12 @@
-function thresholds(par, modeldata, x, obsolence)
+function thresholds(par, modeldata, σⁱ)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
     ngrid = modeldata.ngrid
     nt = modeldata.nt
     
-    N, T, S = size(x)
+    T = length(modeldata.hz)
+    N = size(modeldata.X,1)
+    S = length(modeldata.x)
     
     r1 = collect(LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid))
 
@@ -18,11 +20,10 @@ function thresholds(par, modeldata, x, obsolence)
             (VT[idx]-VT[m_idx]);
         VT .= max(VT, zeros(ngrid))
     end
-    o = obsolence .≤ θ
 
     chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
-        Threads.@spawn sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
+        Threads.@spawn sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
     end
 
     tsk = fetch.(tasks)
@@ -31,9 +32,10 @@ function thresholds(par, modeldata, x, obsolence)
     return r̄
 end
 
-function sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
+function sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
     β = modeldata.β
-    N, T, S = size(x)
+    T = length(modeldata.hz)
+    N = size(modeldata.X,1)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
     ngrid = modeldata.ngrid
@@ -45,20 +47,35 @@ function sim_total(chunk, par, modeldata, x, o, VT, r̄T, r1)
         V[T,:] .= VT
         r̄ = zeros(eltype(par), T)
         r̄[T] = r̄T
-        for t=T-1:-1:1
+        for t=T-1:-1:2
+            o = modeldata.obsolence[t,s]≤θ
             # Allocation for temp variables
             interp = linear_interpolation(
                 r1,
                 V[t+1, :], 
                 extrapolation_bc=Line()
             )
-            V[t,:] = r1'.-c[t].+β.*mean(interp.(o[s]*max.(x[:,t,s],δ*r1')), dims=1)
+            V[t,:] = r1'.-c[t].+β.*mean(interp.(o*max.(invF(modeldata.x[s], t, ϕ, σⁱ, γ),δ*r1')), dims=1)
             # Gather positive values
             idx = findfirst(V[t,:].>zero(eltype(V)))
             m_idx = max(idx-1,1)
             r̄[t] = (idx == 1)  ? 0. : (r1[m_idx]*V[t,idx]-r1[idx]*V[t,m_idx])/(V[t,idx]-V[t,m_idx])
             V[t,:] = maximum([V[t,:] zeros(ngrid)], dims=2)
         end
+        o = modeldata.obsolence[1,s]≤θ
+        # Allocation for temp variables
+        interp = linear_interpolation(
+            r1,
+            V[2, :], 
+            extrapolation_bc=Line()
+        )
+        V[1,:] = r1'.-c[1].+β.*mean(interp.(o*max.(quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[s]),δ*r1')), dims=1)
+        # Gather positive values
+        idx = findfirst(V[1,:].>zero(eltype(V)))
+        m_idx = max(idx-1,1)
+        r̄[1] = (idx == 1)  ? 0. : (r1[m_idx]*V[1,idx]-r1[idx]*V[1,m_idx])/(V[1,idx]-V[1,m_idx])
+        V[1,:] = maximum([V[1,:] zeros(ngrid)], dims=2)
+
         Vtot+=V
         r̄tot+=r̄
     end

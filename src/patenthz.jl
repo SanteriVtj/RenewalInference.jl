@@ -20,24 +20,24 @@ function patenthz(par, modeldata)
     nt = modeldata.nt
     S = length(x)
 
-    μ, σ = initial_shock_parametrisation(par, X)
+    # μ, σ = initial_shock_parametrisation(par, X)
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
-    shocks = zeros(eltype(par), N, T, S)
+    # shocks = zeros(eltype(par), N, T, S)
 
-    shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
-    @inbounds for t in 2:T
-        shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
-    end
+    # shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
+    # @inbounds for t in 2:T
+    #     shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
+    # end
     
-    r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, shocks, obsolence)
+    r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, σⁱ)
 
-    o = obsolence .≤ θ
+    # o = obsolence .≤ θ
     
     chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
-        Threads.@spawn patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
+        Threads.@spawn patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
     end
     val = fetch.(tasks)
     rtot = [val[i][1] for i in eachindex(val)]
@@ -62,34 +62,34 @@ function patenthz(par, modeldata)
         
         return fval
     end
-    if eltype(ehz)<:ForwardDiff.Dual
-        ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
-    end
+    # if eltype(ehz)<:ForwardDiff.Dual
+    #     ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
+    # end
 
     
-    @inbounds begin
-        ehz[isnan.(ehz)] .= zero(eltype(ehz))
-        err = ehz[2:end]-hz[2:end]
-        err[isnan.(err)] .= zero(eltype(err))
-        w = sqrt.(survive[2:end]./N)
-        if eltype(w)<:ForwardDiff.Dual
-            w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
-        end
-        W = Diagonal(w)
-        fval = (err'*W*err)[1]
-        fval = isnan(fval) ? Inf : fval
-    end
+    # @inbounds begin
+    #     ehz[isnan.(ehz)] .= zero(eltype(ehz))
+    #     err = ehz[2:end]-hz[2:end]
+    #     err[isnan.(err)] .= zero(eltype(err))
+    #     w = sqrt.(survive[2:end]./N)
+    #     if eltype(w)<:ForwardDiff.Dual
+    #         w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
+    #     end
+    #     W = Diagonal(w)
+    #     fval = (err'*W*err)[1]
+    #     fval = isnan(fval) ? Inf : fval
+    # end
 
-    if modeldata.controller.ae_mode
-        return ehz#sum(r_d, dims=2)
-    elseif modeldata.controller.simulation
-        return (
-            ehz,
-            r,
-            r_d,
-            r̄
-        )
-    end
+    # if modeldata.controller.ae_mode
+    #     return ehz#sum(r_d, dims=2)
+    # elseif modeldata.controller.simulation
+    #     return (
+    #         ehz,
+    #         r,
+    #         r_d,
+    #         r̄
+    #     )
+    # end
 end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))
@@ -107,7 +107,7 @@ end
 
 invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
 
-function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
+function patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
     ϕ, γ, δ, θ = par
     T = length(modeldata.hz)
     N = size(modeldata.X,1)
@@ -116,13 +116,14 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
     @inbounds for s in chunk
         r = zeros(eltype(par), N, T)
         r_d = zeros(eltype(par), N, T)
-        r[:,1] .= shocks[:,1,s]
+        r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[s]) # shocks[:,1,s]
         r_d[:,1] .= r[:,1] .≥ r̄[1]
         r[:,1] .= r[:,1].*r_d[:,1]
 
         @inbounds for t=2:T
+            o = modeldata.obsolence[t-1,s]≤θ
             # compute patent value at t by maximizing between learning shocks and depreciation
-            r[:,t] .= o[t-1,s].*max(δ.*r[:,t-1], shocks[:,t,s]) # concat as n×2 matrix and choose maximum in for each row
+            r[:,t] .= o[t-1,s].*max(δ.*r[:,t-1], invF(modeldata.x[s], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
             # If patent wasn't active in t-1 it cannot be active in t
             r[:,t] .= r[:,t].*r_d[:,t-1]
             # Patent is kept active if its value exceed the threshold o.w. set to zero
