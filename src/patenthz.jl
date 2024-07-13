@@ -120,7 +120,7 @@ function patent_valu_total(chunk, par, modeldata, shocks, o, r̄)
         r_d[:,1] .= r[:,1] .≥ r̄[1]
         r[:,1] .= r[:,1].*r_d[:,1]
 
-        for t=2:T
+        @inbounds for t=2:T
             # compute patent value at t by maximizing between learning shocks and depreciation
             r[:,t] .= o[t-1,s].*max(δ.*r[:,t-1], shocks[:,t,s]) # concat as n×2 matrix and choose maximum in for each row
             # If patent wasn't active in t-1 it cannot be active in t
