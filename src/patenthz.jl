@@ -20,30 +20,19 @@ function patenthz(par, modeldata)
     nt = modeldata.nt
     S = length(x)
 
-    # μ, σ = initial_shock_parametrisation(par, X)
-
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     
-    # shocks = zeros(eltype(par), N, T, S)
+    r̄ = thresholds(par, modeldata, σⁱ)
 
-    # shocks[:,1,:] .= quantile.(LogNormal.(μ, σ), x)
-    # @inbounds for t in 2:T
-    #     shocks[:,t,:] .= invF(x, t, ϕ, σⁱ, γ)
-    # end
-    
-    r̄ = modeldata.β==0 ? modeldata.costs : thresholds(par, modeldata, σⁱ)
-
-    # o = obsolence .≤ θ
-    
     chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
-        Threads.@spawn patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
+        Threads.@spawn @inline patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
     end
     val = fetch.(tasks)
     rtot = [val[i][1] for i in eachindex(val)]
     r_dtot = [val[i][2] for i in eachindex(val)]
-    r = reduce(+, rtot)./S
-    r_d = reduce(+, r_dtot)./S
+    r = convert(Matrix{eltype(par)}, reduce(+, rtot)./S)
+    r_d = convert(Matrix{eltype(par)}, reduce(+, r_dtot)./S)
 
     all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
     all_hz[findall(isnan.(all_hz))] .= 0
@@ -62,34 +51,6 @@ function patenthz(par, modeldata)
         
         return fval
     end
-    # if eltype(ehz)<:ForwardDiff.Dual
-    #     ehz[findall(x->any(isnan.(x.partials)), ehz)] .= zero(eltype(ehz))
-    # end
-
-    
-    # @inbounds begin
-    #     ehz[isnan.(ehz)] .= zero(eltype(ehz))
-    #     err = ehz[2:end]-hz[2:end]
-    #     err[isnan.(err)] .= zero(eltype(err))
-    #     w = sqrt.(survive[2:end]./N)
-    #     if eltype(w)<:ForwardDiff.Dual
-    #         w[findall(x->any(isnan.(x.partials)), w)] .= zero(eltype(w))
-    #     end
-    #     W = Diagonal(w)
-    #     fval = (err'*W*err)[1]
-    #     fval = isnan(fval) ? Inf : fval
-    # end
-
-    # if modeldata.controller.ae_mode
-    #     return ehz#sum(r_d, dims=2)
-    # elseif modeldata.controller.simulation
-    #     return (
-    #         ehz,
-    #         r,
-    #         r_d,
-    #         r̄
-    #     )
-    # end
 end
 
 likelihood(r, r̄, t, ν) = prod(1 ./(1 .+exp.(-(r[:,1:t-1].-r̄[1:t-1]')./ν)),dims=2).*1 ./(1 .+exp.((r[:,t].-r̄[t])./ν))

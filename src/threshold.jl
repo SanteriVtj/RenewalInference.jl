@@ -23,12 +23,13 @@ function thresholds(par, modeldata, σⁱ)
 
     chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
     tasks = map(chunks) do chunk
-        Threads.@spawn sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
+        Threads.@spawn @inline sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
     end
 
     tsk = fetch.(tasks)
-    rds = convert.(Float64, reduce(hcat, tsk))
-    r̄ = sum(rds, dims=2)./S
+    rds = convert.(eltype(par), reduce(hcat, tsk))
+    r̄ = zeros(eltype(par), T)
+    r̄ .= sum(rds, dims=2)./S
     return r̄
 end
 

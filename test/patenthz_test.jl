@@ -55,7 +55,7 @@
             ),
             alg=Uniform(),
             β=.95,
-            S=1,
+            S=50,
             nt=10
         )
         x=patenthz(par,md_sim)
