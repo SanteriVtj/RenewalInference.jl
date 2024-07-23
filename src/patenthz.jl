@@ -28,12 +28,14 @@ function patenthz(par, modeldata)
     tasks = map(chunks) do chunk
         Threads.@spawn @inline patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
     end
+    # Get all of the results as matrices containing the mean values and renewal decisions
     val = fetch.(tasks)
     rtot = [val[i][1] for i in eachindex(val)]
     r_dtot = [val[i][2] for i in eachindex(val)]
     r = convert(Matrix{eltype(par)}, reduce(+, rtot)./S)
     r_d = convert(Matrix{eltype(par)}, reduce(+, r_dtot)./S)
 
+    # Compute hazard rates based on the simulations 
     all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
     all_hz[findall(isnan.(all_hz))] .= 0
     
