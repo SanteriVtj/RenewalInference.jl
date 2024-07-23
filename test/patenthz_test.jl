@@ -2,7 +2,7 @@
     @test let
         # Definitely not a test
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures
+        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger
         # ϕ, γ, δ, θ
         # par = [.9, .6, .9, .95];
         # append!(par, [5., .2, .1, 200, 3])

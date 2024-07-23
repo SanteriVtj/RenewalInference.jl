@@ -42,6 +42,7 @@ function sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
     ngrid = modeldata.ngrid
     Vtot = zeros(eltype(par), T, ngrid)
     r̄tot = zeros(eltype(par), T)
+    @show chunk
 
     @inbounds for s in chunk
         V = zeros(eltype(par), T, ngrid)
@@ -56,6 +57,7 @@ function sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
                 V[t+1, :], 
                 extrapolation_bc=Line()
             )
+
             V[t,:] = r1'.-c[t].+β.*mean(interp.(o*max.(invF(modeldata.x[s], t, ϕ, σⁱ, γ),δ*r1')), dims=1)
             # Gather positive values
             idx = findfirst(V[t,:].>zero(eltype(V)))
