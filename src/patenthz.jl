@@ -21,7 +21,7 @@ function patenthz(par, modeldata)
     S = length(x)
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
-    
+
     r̄ = thresholds(par, modeldata, σⁱ)
 
     chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)

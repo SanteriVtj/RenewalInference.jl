@@ -42,7 +42,6 @@ function sim_total(chunk, par, modeldata, VT, r̄T, r1, σⁱ)
     ngrid = modeldata.ngrid
     Vtot = zeros(eltype(par), T, ngrid)
     r̄tot = zeros(eltype(par), T)
-    @show chunk
 
     @inbounds for s in chunk
         V = zeros(eltype(par), T, ngrid)
