@@ -23,24 +23,51 @@ function patenthz(par, modeldata)
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
 
     r̄ = thresholds(par, modeldata, σⁱ)
+    return r̄
 
-    chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
-    tasks = map(chunks) do chunk
-        Threads.@spawn @inline patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
-    end
+    # chunks = Iterators.partition(1:S, S÷nt > 0 ? S÷nt : 1)
+    # tasks = map(chunks) do chunk
+    #     Threads.@spawn @inline patent_valu_total(chunk, par, modeldata, r̄, σⁱ)
+    # end
     # Get all of the results as matrices containing the mean values and renewal decisions
-    val = fetch.(tasks)
-    rtot = [val[i][1] for i in eachindex(val)]
-    r_dtot = [val[i][2] for i in eachindex(val)]
-    r = convert(Matrix{eltype(par)}, reduce(+, rtot)./S)
-    r_d = convert(Matrix{eltype(par)}, reduce(+, r_dtot)./S)
+    
+    rtot = zeros(eltype(par), N, T)
+    r_dtot = zeros(eltype(par), N, T)
+    r = zeros(eltype(par), N, T)
+    r_d = zeros(eltype(par), N, T)
+    @inbounds for s in 1:S
+        r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[s]) # shocks[:,1,s]
+        r_d[:,1] .= r[:,1] .≥ r̄[1]
+        r[:,1] .= r[:,1].*r_d[:,1]
+
+        @inbounds for t=2:T
+            o = modeldata.obsolence[t-1,s]≤θ
+            # compute patent value at t by maximizing between learning shocks and depreciation
+            r[:,t] .= o[t-1,s].*max(δ.*r[:,t-1], invF(modeldata.x[s], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
+            # If patent wasn't active in t-1 it cannot be active in t
+            r[:,t] .= r[:,t].*r_d[:,t-1]
+            # Patent is kept active if its value exceed the threshold o.w. set to zero
+            r_d[:,t] .= r[:,t] .> r̄[t]
+            # ℓ[:,t] = likelihood(r, r̄, t, ν)
+        end
+
+        rtot+=r
+        r_dtot+=r_d
+    end
+    # val = fetch.(tasks)
+    # rtot = [val[i][1] for i in eachindex(val)]
+    # r_dtot = [val[i][2] for i in eachindex(val)]
+    # r = convert(Matrix{eltype(par)}, reduce(+, rtot)./S)
+    # r_d = convert(Matrix{eltype(par)}, reduce(+, r_dtot)./S)
 
     # Compute hazard rates based on the simulations 
-    all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
+    # all_hz = mean(r_dtot,dims=1)
+    # all_hz = reduce(hcat, modelhz.(eachrow(r_d*S), S))'
+    all_hz = reduce(hcat, modelhz.(eachrow(r_dtot), N))'
     all_hz[findall(isnan.(all_hz))] .= 0
     
     if modeldata.controller.simulation
-        return (r_d, r, all_hz)
+        return (r_dtot/S, rtot/S, all_hz)
     else
         data_stopping = modeldata.renewals
         data_stopping = min.(data_stopping, T)
