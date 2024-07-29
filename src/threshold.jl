@@ -26,10 +26,10 @@ function thresholds(par, modeldata, σⁱ)
     Vtot = zeros(eltype(par), T, ngrid)
     r̄tot = zeros(eltype(par), T)
 
+    V = zeros(eltype(par), T, ngrid)
+    r̄ = zeros(eltype(par), T)
     @inbounds for s in 1:S
-        V = zeros(eltype(par), T, ngrid)
         V[T,:] .= VT
-        r̄ = zeros(eltype(par), T)
         r̄[T] = r̄T
         for t=T-1:-1:2
             o = modeldata.obsolence[t,s]≤θ
