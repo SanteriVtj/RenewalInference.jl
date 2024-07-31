@@ -14,7 +14,7 @@
 
         # par = [.85, .4, .8, .95, 2.5, 5., .1, .2, -.3, 1000, 1000];
         # par = [.85, .4, .8, .95, 2.5, 5., .1, 0, 1000];
-        # par = [.9, 1000., .85, .95, 5., 2., 10, 10, 0, 5_000., 5_000]
+        par = [.9, 1000., .85, .95, 1., 2., 1, 1, 0, 0., 200]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         X = Matrix(X[1:N,["age", "sex","humanities"]])

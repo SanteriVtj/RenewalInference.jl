@@ -48,8 +48,8 @@ function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float6
     t = length(hz)
 
     # Generate quasi monte carlo draws
-    obsolence = QuasiMonteCarlo.sample(S,t-1,alg)
-    x = QuasiMonteCarlo.sample(S,1,alg)
+    obsolence = QuasiMonteCarlo.sample(t-1,1,alg)
+    x = QuasiMonteCarlo.sample(t,1,alg)
 
     return ModelData(
         hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, nt, alg=alg, β=β
