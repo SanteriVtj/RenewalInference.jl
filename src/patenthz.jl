@@ -1,4 +1,4 @@
-function patenthz(par, modeldata)
+function patenthz(rrs::RRS, par, modeldata)
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
@@ -21,41 +21,19 @@ function patenthz(par, modeldata)
 
     σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
     r̄ = @inline thresholds(par, modeldata, σⁱ)
-    @show r̄
 
-    r = zeros(eltype(par), N, T)
-    r_d = zeros(eltype(par), N, T)
-    r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[1]) # shocks[:,1,s]
-    r_d[:,1] .= r[:,1] .≥ r̄[1]
-    r[:,1] .= r[:,1].*r_d[:,1]
+    rrs.r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[1]) # shocks[:,1,s]
+    rrs.r_d[:,1] .= rrs.r[:,1] .≥ r̄[1]
+    rrs.r[:,1] .= rrs.r[:,1].*rrs.r_d[:,1]
 
     o = modeldata.obsolence.≤θ
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        r[:,t] .= o[t-1].*max(δ.*r[:,t-1], invF(modeldata.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
+        rrs.r[:,t] .= o[t-1].*max(δ.*rrs.r[:,t-1], invF(modeldata.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
-        r[:,t] .= r[:,t].*r_d[:,t-1]
+        rrs.r[:,t] .= rrs.r[:,t].*rrs.r_d[:,t-1]
         # Patent is kept active if its value exceed the threshold o.w. set to zero
-        r_d[:,t] .= r[:,t] .> r̄[t]
-    end
-
-    # all_hz = reduce(hcat, modelhz.(eachrow(r_dtot), N))'
-    # all_hz[findall(isnan.(all_hz))] .= 0
-    
-    if modeldata.controller.simulation
-        return (r_d, r)
-    else
-        nothing
-        # data_stopping = modeldata.renewals
-        # data_stopping = min.(data_stopping, T)
-        # data_stopping = max.(data_stopping, 1)
-        # # hzd = zeros(eltype(par), N, T)
-        # # hzd[CartesianIndex.(1:N, Int.(data_stopping))] .= 1
-        # err = abs.(all_hz[CartesianIndex.(1:N, Int.(data_stopping))].-1)
-        # err_ind = diag(err'*err)
-        # fval = err_ind'*err_ind
-        
-        # return fval
+        rrs.r_d[:,t] .= rrs.r[:,t] .> r̄[t]
     end
 end
 
@@ -73,3 +51,10 @@ function initial_shock_parametrisation(par, X)
 end
 
 invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
+
+# function simulate(par, md; S=1000)
+#     T = length(md.hz)
+#     N = size(md.X,1)
+    
+#     return 
+# end
