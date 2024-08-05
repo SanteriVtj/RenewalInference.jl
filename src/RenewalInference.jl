@@ -4,7 +4,7 @@ module RenewalInference
         QuasiMonteCarlo, Random, Interpolations,
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
         MLJ, AdversialEstimation, SimpleChains, CSV, Distances, 
-        ForwardDiff
+        ForwardDiff, StructArrays
 
     include("model_struct.jl")
     include("model.jl")
@@ -29,5 +29,6 @@ module RenewalInference
         AEestimation,
         AEData,
         AEloss,
-        prepare_data
+        prepare_data,
+        RRS
 end
