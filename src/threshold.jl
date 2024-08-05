@@ -30,7 +30,7 @@ function thresholds(par, modeldata, σⁱ)
 
     o = modeldata.obsolence.≤θ
 
-    for t=T-1:-1:1
+    @inbounds for t=T-1:-1:1
         # Allocation for temp variables
         interp = linear_interpolation(
             r1,
