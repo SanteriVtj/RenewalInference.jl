@@ -56,11 +56,6 @@ function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float6
     )
 end
 
-function repopulate_x!(md::ModelData)
-    N,K = size(md.x)
-    @views md.x[:,:] = Matrix(QuasiMonteCarlo.sample(N,K,md.alg)')
-end
-
 function prepare_data(md::ModelData)
     s_data = md.s_data
     X = md.X
@@ -89,4 +84,8 @@ function AEData(Xₑ::Matrix{Float64})
     Yₘ = zeros(T, N, 1)
 
     return AEData(Xₑ, Yₑ, Yₘ)
+end
+struct RRS
+    r_d
+    r
 end
