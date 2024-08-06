@@ -52,9 +52,49 @@ end
 
 invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
 
-# function simulate(par, md; S=1000)
-#     T = length(md.hz)
-#     N = size(md.X,1)
-    
-#     return 
-# end
+function simulate(rrs, par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=Shift(), nt=Threads.nthreads())
+    T = length(md.hz)
+    N = size(md.X,1)
+    # Initialize memory
+    r = zeros(eltype(par),N,T)
+    r_d = zeros(eltype(par),N,T)
+    n_part = div(S,nt)
+    n_part = n_part == 0 ? 1 : n_part
+    chunks = Iterators.partition(1:S, n_part)
+    tasks = map(chunks) do chunk
+        Threads.@spawn begin
+            # The simulation loop. Repeats DGP S times for S different realizations of RQMC 
+            for s in chunk
+                # Replace the sample with RQMC sample
+                md.x[:,:] .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
+                md.obsolence[:,:] .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
+                # Simulate the DGP once
+                @inline patenthz(rrs,par,md)
+                # Save results
+                r.+=rrs.r
+                r_d.+=rrs.r_d
+            end
+            (r, r_d)
+        end
+    end 
+    fetch.(tasks)[1]
+end
+
+
+function fval(rrs,par,md;S=1000,nt=Threads.nthread())
+    T = length(md.costs)
+    @assert all((md.renewals .≤ T).&(1 .≤ md.renewals)) "Given renewals must be within the support of data."
+    N = size(md.X, 1)
+    # Run the simulation
+    r,r_d=simulate(rrs, par, md, S=S, nt=nt)
+    # Construct individual patent simulation weighting matrix for the W-norm
+    W = sqrt.(r_d/S)'
+    # Compute simulation hazard rates
+    hz = reduce(hcat, modelhz.(eachrow(r_d),S))
+    # Create the deviation matrix for individual hazard rates
+    hz[CartesianIndex.(zip(convert.(Int, md.renewals),1:17))].-=1
+    # Compute aggregate errors for each age cohort
+    ind_err = diag(hz.*W*hz')
+    # return the total error as fval
+    return ind_err'*ind_err
+end

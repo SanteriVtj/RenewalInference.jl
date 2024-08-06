@@ -2,7 +2,7 @@
     @test let
         # Definitely not a test
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays
+        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView
         # ϕ, γ, δ, θ
         # par = [.9, .6, .9, .95];
         # append!(par, [5., .2, .1, 200, 3])
@@ -17,6 +17,7 @@
         par = [.9, 500., .85, .95, 1., 1., 1, 0, 0, 0., 100.]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
+        data_stopping = min.(T,max.(data_stopping,1))
         X = Matrix(X[1:N,["age", "sex","humanities"]])
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
@@ -49,7 +50,7 @@
             Vector{Float64}(c),
             X,
             dσ,
-            zeros(Float64, 17),
+            data_stopping,
             controller = ModelControl(
                 simulation=true
             ),
@@ -59,7 +60,7 @@
             nt=10
         )
         rrs_sim = RRS(zeros(N,T),zeros(N,T))
-        x=patenthz(rrs_sim,par,md_sim)
+        patenthz(rrs_sim,par,md_sim)
         Plots.plot(sum(x[end], dims=1)'/N, label=false)
         Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
         Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
