@@ -1,4 +1,4 @@
-function patenthz(rrs::RRS, par, modeldata)
+function patenthz(rrs::RRS, par, md)
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
@@ -10,26 +10,22 @@ function patenthz(rrs::RRS, par, modeldata)
     o2: obsolence shocks in inner loop. Random or quasirandom draw of size N×T.
     """
     ϕ, γ, δ, θ = par
-    hz = modeldata.hz
+    hz = md.hz
     T = length(hz)
-    N = size(modeldata.X,1)
-    s_data = modeldata.s_data
-    X = modeldata.X
-    x = modeldata.x
-    nt = modeldata.nt
-    S = length(x)
+    N = size(md.X,1)
+    S = length(md.x)
 
-    σⁱ = hcat(ones(eltype(par), N), s_data)*par[6+size(X,2)+1:6+size(X,2)+1+size(s_data, 2)]
-    r̄ = @inline thresholds(par, modeldata, σⁱ)
+    σⁱ = hcat(ones(eltype(par), N), md.s_data)*par[6+size(md.X,2)+1:6+size(md.X,2)+1+size(md.s_data, 2)]
+    r̄ = @inline thresholds(par, md, σⁱ)
 
-    rrs.r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, modeldata.X)...), modeldata.x[1]) # shocks[:,1,s]
+    rrs.r[:,1] .= quantile.(LogNormal.(initial_shock_parametrisation(par, md.X)...), md.x[1]) # shocks[:,1,s]
     rrs.r_d[:,1] .= rrs.r[:,1] .≥ r̄[1]
     rrs.r[:,1] .= rrs.r[:,1].*rrs.r_d[:,1]
 
-    o = modeldata.obsolence.≤θ
+    o = md.obsolence.≤θ
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        rrs.r[:,t] .= o[t-1].*max(δ.*rrs.r[:,t-1], invF(modeldata.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
+        rrs.r[:,t] .= o[t-1].*max(δ.*rrs.r[:,t-1], invF(md.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
         rrs.r[:,t] .= rrs.r[:,t].*rrs.r_d[:,t-1]
         # Patent is kept active if its value exceed the threshold o.w. set to zero
