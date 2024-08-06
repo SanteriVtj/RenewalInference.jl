@@ -30,5 +30,7 @@ module RenewalInference
         AEData,
         AEloss,
         prepare_data,
-        RRS
+        RRS,
+        simulate,
+        fval
 end
