@@ -56,6 +56,7 @@ function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float6
     )
 end
 
+# Helper functions and data structure for adversial estimation
 function prepare_data(md::ModelData)
     s_data = md.s_data
     X = md.X
@@ -85,6 +86,8 @@ function AEData(Xₑ::Matrix{Float64})
 
     return AEData(Xₑ, Yₑ, Yₘ)
 end
+
+# Return struct
 struct RRS
     r_d
     r
