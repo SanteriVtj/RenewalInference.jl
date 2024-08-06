@@ -51,20 +51,19 @@
             X,
             dσ,
             data_stopping,
+            alg=Uniform(),
             controller = ModelControl(
                 simulation=true
             ),
-            alg=Uniform(),
-            β=.95,
-            S=1,
-            nt=10
+            β=.95
         )
         rrs_sim = RRS(zeros(N,T),zeros(N,T))
         patenthz(rrs_sim,par,md_sim)
-        Plots.plot(sum(x[end], dims=1)'/N, label=false)
-        Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
-        Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
-        Plots.plot!(x[end][vec(dσ.==0),:]',label=false,color=:darkblue,alpha=.2)
+
+        # Plots.plot(sum(x[end], dims=1)'/N, label=false)
+        # Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
+        # Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
+        # Plots.plot!(x[end][vec(dσ.==0),:]',label=false,color=:darkblue,alpha=.2)
         md = ModelData(
             vec(mean(x[end], dims=1)),
             Vector{Float64}(c),
