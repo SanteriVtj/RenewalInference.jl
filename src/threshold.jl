@@ -2,7 +2,6 @@ function thresholds(par, modeldata, σⁱ)
     ϕ, γ, δ, θ = par
     c = modeldata.costs
     ngrid = modeldata.ngrid
-    nt = modeldata.nt
     β = modeldata.β
     
     
@@ -34,11 +33,17 @@ function thresholds(par, modeldata, σⁱ)
         # Allocation for temp variables
         interp = linear_interpolation(
             r1,
-            V[t+1, :], 
+            V[t+1, :],
             extrapolation_bc=Line()
         )
 
-        V[t,:] = r1'.-c[t].+β.*mean(interp.(o[t]*max.(invF(modeldata.x[t], t, ϕ, σⁱ, γ),δ*r1')), dims=1)
+        # Compute value functions for each individual patent i.e. the Bellman
+        V[t,:] = r1'.-c[t].+β.*mean(
+            interp.(
+                o[t]*max.(invF(modeldata.x[t], t, ϕ, σⁱ, γ),δ*r1')
+            ), 
+            dims=1
+        )
         # Gather positive values
         idx = findfirst(V[t,:].>zero(eltype(V)))
         m_idx = max(idx-1,1)
