@@ -64,29 +64,15 @@ function prepare_data(md::ModelData)
     return x
 end
 
-struct AEData
-    Xₑ::Matrix{Float64}
-    Yₑ::Matrix{Float64}
-    Yₘ::Matrix{Float64}
-    function AEData(Xₑ, Yₑ, Yₘ)
-        size(Xₑ, 1) == size(Yₑ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
-        size(Xₑ, 1) == size(Yₘ, 1) ? nothing : throw(AssertionError("Size of Xₑ and Yₑ doesn't match."))
-        
-        new(Xₑ, Yₑ, Yₘ)
-    end
-end
-
-function AEData(Xₑ::Matrix{Float64})
-    N, K = size(Xₑ)
-
-    Yₑ = ones(T, N, 1)
-    Yₘ = zeros(T, N, 1)
-
-    return AEData(Xₑ, Yₑ, Yₘ)
-end
-
 # Return struct
 struct RRS
     r_d
     r
+end
+
+struct MemAlloc
+    μ
+    V
+    r̄
+    σⁱ
 end
