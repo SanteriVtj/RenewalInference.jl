@@ -63,9 +63,9 @@ function show_parameters(par,md)
     ϕ, γ, δ, θ = par
     println("Structural parametes: ϕ = $ϕ, γ = $γ, $δ = δ, $θ = θ")
     σ = par[5]
-    β = par[6:6+size(md.X,2)]
+    β = par[6:6+size(md.X,2)-1]
     println("Initial distribution parameters:  σ = $σ, β = $β")
-    σⁱ_par = par[6+size(md.X,2)+1:6+size(md.X,2)+1+size(md.s_data, 2)]
+    σⁱ_par = par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
     println("Learning parameters:  σⁱ_par = $σⁱ_par")
     nothing
 end
