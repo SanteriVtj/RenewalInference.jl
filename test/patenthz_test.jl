@@ -2,7 +2,7 @@
     @test let
         # Definitely not a test
         using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using OptimizationBBO, Interpolations, OptimizationNLopt, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView
+        using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView
         # ϕ, γ, δ, θ
         # par = [.9, .6, .9, .95];
         # append!(par, [5., .2, .1, 200, 3])
@@ -14,11 +14,12 @@
 
         # par = [.85, .4, .8, .95, 2.5, 5., .1, .2, -.3, 1000, 1000];
         # par = [.85, .4, .8, .95, 2.5, 5., .1, 0, 1000];
-        par = [.9, 500., .85, .95, 1., 1., 1, 0, 0, 0., 100.]
+        par = [.9, 500., .85, .95, 2., 1., 1, 0, 0, 2, 100.]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         data_stopping = min.(T,max.(data_stopping,1))
         X = Matrix(X[1:N,["age", "sex","humanities"]])
+        X = hcat(ones(N),X)
         r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
@@ -29,6 +30,7 @@
         # X = rand(Normal(0, 1), N, 1);
 
         dσ = float.(rand(Bernoulli(.75), N, 1));
+        dσ = hcat(ones(N),dσ)
         # par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
 
         p0 = [
@@ -58,7 +60,14 @@
             β=.95
         )
         rrs_sim = RRS(zeros(N,T),zeros(N,T))
-        patenthz(rrs_sim,par,md_sim)
+        ma_sim = MemAlloc(
+            zeros(N),
+            zeros(T,1000),
+            zeros(T),
+            zeros(N)
+        )
+
+        patenthz(rrs_sim,par,md_sim,ma_sim)
 
         # Plots.plot(sum(x[end], dims=1)'/N, label=false)
         # Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
