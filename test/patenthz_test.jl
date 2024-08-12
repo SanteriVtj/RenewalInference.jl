@@ -1,7 +1,7 @@
 @testset "Tests for general functionality of patent model" begin
     @test let
         # Definitely not a test
-        using RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, LineSearches, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
+        using Revise, RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
         using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView
         # ϕ, γ, δ, θ
         # par = [.9, .6, .9, .95];
@@ -31,7 +31,6 @@
 
         dσ = float.(rand(Bernoulli(.75), N, 1));
         dσ = hcat(ones(N),dσ)
-        # par = [.4, .6, .95, .85, 1.2717440742993102, 6.515768587897884,0,0,0,3000,0]
 
         p0 = [
             Uniform(.5,.8),

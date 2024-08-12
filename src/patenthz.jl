@@ -40,7 +40,7 @@ end
 
 invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
 
-function simulate(rrs, par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=Shift(), nt=Threads.nthreads())
+function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=Shift(), nt=Threads.nthreads())
     T = length(md.hz)
     N = size(md.X,1)
     # Initialize memory
@@ -53,10 +53,14 @@ function simulate(rrs, par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shif
         Threads.@spawn begin
             # The simulation loop. Repeats DGP S times for S different realizations of RQMC 
             ma = MemAlloc(
-                zeros(N),
-                zeros(T,1000),
-                zeros(T),
-                zeros(N)
+                zeros(eltype(par),N),
+                zeros(eltype(par),T,md.ngrid),
+                zeros(eltype(par),T),
+                zeros(eltype(par),N)
+            )
+            rrs = RRS(
+                zeros(eltype(par),N,T),
+                zeros(eltype(par),N,T)
             )
             @inline patenthz(rrs,par,md,ma)
             for s in chunk
@@ -75,12 +79,12 @@ function simulate(rrs, par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shif
 end
 
 
-function fval(rrs,par,md;S=1000,nt=Threads.nthread())
+function fval(par,md;S=1000,nt=Threads.nthread())
     T = length(md.costs)
     @assert all((md.renewals .≤ T).&(1 .≤ md.renewals)) "Given renewals must be within the support of data."
     N = size(md.X, 1)
     # Run the simulation
-    r,r_d=simulate(rrs, par, md, S=S, nt=nt)
+    r,r_d=simulate(par, md, S=S, nt=nt)
     # Construct individual patent simulation weighting matrix for the W-norm
     W = sqrt.(r_d/S)'
     # Compute simulation hazard rates
