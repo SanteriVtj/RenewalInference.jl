@@ -74,6 +74,7 @@ function gen_sample(par,md)
     T = length(md.costs)
 
     renewals = zeros(size(md.X,1))
+    r_d_res = zeros(size(md.X,1),T)
     for i in 1:size(md.X,1)
         md_sim = ModelData(
             zeros(Float64, 17),
@@ -84,8 +85,9 @@ function gen_sample(par,md)
             alg=Uniform()
         )
         r,r_d = simulate(par, md_sim,S=1)
+        r_d_res[i,:] .= r_d[:]
         drop = findfirst(r_d .==0)
         renewals[i] = isnothing(drop) ? T :  drop.I[2]-1
     end
-    return renewals
+    return renewals, r_d_res
 end

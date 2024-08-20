@@ -52,6 +52,7 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
     tasks = map(chunks) do chunk
         Threads.@spawn begin
             # The simulation loop. Repeats DGP S times for S different realizations of RQMC 
+            md_copy = deepcopy(md)
             ma = MemAlloc(
                 zeros(eltype(par),N),
                 zeros(eltype(par),T,md.ngrid),
@@ -62,24 +63,28 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
                 zeros(eltype(par),N,T),
                 zeros(eltype(par),N,T)
             )
-            @inline patenthz(rrs,par,md,ma)
             for s in chunk
                 # Replace the sample with RQMC sample
-                md.x[:,:] .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
-                md.obsolence[:,:] .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
+                md_copy.x[:,:] .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
+                md_copy.obsolence[:,:] .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
                 # Simulate the DGP once
+                @inline patenthz(rrs,par,md_copy,ma)
                 # Save results
                 r.+=rrs.r
+                # keys = findfirst.(eachrow(rrs.r_d.==0))
+                # keys[isnothing.(keys)] .= T
+                # r_d[CartesianIndex.(zip(1:N,keys))].+=1
                 r_d.+=rrs.r_d
+                # @show s,unique(findfirst.(eachrow(rrs.r_d.==0)))
             end
-            (r, r_d)
+            (r/S, r_d)
         end
     end 
     fetch.(tasks)[1]
 end
 
 
-function fval(par,md;S=1000,nt=Threads.nthread())
+function fval(par,md;S=1000,nt=Threads.nthreads())
     T = length(md.costs)
     @assert all((md.renewals .≤ T).&(1 .≤ md.renewals)) "Given renewals must be within the support of data."
     N = size(md.X, 1)

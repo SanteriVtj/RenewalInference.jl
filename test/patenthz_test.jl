@@ -45,7 +45,7 @@
             # Uniform(0,5)
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
-
+        
         md_sim = ModelData(
             zeros(Float64, 17),
             Vector{Float64}(c),
@@ -55,19 +55,41 @@
             alg=Uniform(),
             controller = ModelControl(
                 simulation=true
-            ),
-            β=.95
+                ),
+                β=.95
         )
-        rrs_sim = RRS(zeros(N,T),zeros(N,T))
-        ma_sim = MemAlloc(
-            zeros(N),
-            zeros(T,1000),
-            zeros(T),
-            zeros(N)
+        renewals = gen_sample(par,md_sim)
+        md = ModelData(
+            zeros(Float64, 17),
+            Vector{Float64}(c),
+            X,
+            dσ,
+            renewals,
+            alg=Uniform(),
+            controller = ModelControl(
+                simulation=true
+                ),
+                β=.95
         )
+
+        r,r_d = simulate(par, md)
+        RenewalInference.modelhz(sum(r_d, dims=1),1000^2)
+        histogram([i.I[2] for i in argmax(-diff(r_d,dims=2),dims=2)],alpha=.3)
+        histogram!(renewals,alpha=.3)
 
         patenthz(rrs_sim,par,md_sim,ma_sim)
 
+
+        ma = MemAlloc(
+            zeros(eltype(par),N),
+            zeros(eltype(par),T,md.ngrid),
+            zeros(eltype(par),T),
+            zeros(eltype(par),N)
+        )
+        rrs = RRS(
+            zeros(eltype(par),N,T),
+            zeros(eltype(par),N,T)
+        )
         # Plots.plot(sum(x[end], dims=1)'/N, label=false)
         # Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
         # Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)

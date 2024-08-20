@@ -29,5 +29,6 @@ module RenewalInference
         RRS,
         simulate,
         fval,
-        MemAlloc
+        MemAlloc,
+        gen_sample
 end

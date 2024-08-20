@@ -35,7 +35,7 @@ function thresholds(par, md, ma)
         # Compute value functions for each individual patent i.e. the Bellman
         ma.V[t,:] .= r1.-c[t].+β*mean(
             interp.(
-                o[t]*max.(invF(md.x[t], t, ϕ, ma.σⁱ, γ),δ*r1')
+                o[t].*max.(invF(md.x[t], t, ϕ, ma.σⁱ, γ),δ*r1')
             ), 
             dims=1
         )'
