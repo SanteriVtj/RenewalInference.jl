@@ -1,4 +1,4 @@
-function patenthz(rrs::RRS, par, md, ma)
+function patenthz(rrs::RRS, par, md::ModelData, ma::MemAlloc)
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
@@ -16,6 +16,7 @@ function patenthz(rrs::RRS, par, md, ma)
     S = length(md.x)
 
     ma.σⁱ .= md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
+    # σⁱ = md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
     @inline thresholds(par, md, ma)
 
     # Compute initial shock parameters
@@ -71,11 +72,7 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
                 @inline patenthz(rrs,par,md_copy,ma)
                 # Save results
                 r.+=rrs.r
-                # keys = findfirst.(eachrow(rrs.r_d.==0))
-                # keys[isnothing.(keys)] .= T
-                # r_d[CartesianIndex.(zip(1:N,keys))].+=1
                 r_d.+=rrs.r_d
-                # @show s,unique(findfirst.(eachrow(rrs.r_d.==0)))
             end
             (r/S, r_d)
         end

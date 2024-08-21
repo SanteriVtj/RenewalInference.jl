@@ -64,12 +64,8 @@
             Vector{Float64}(c),
             X,
             dσ,
-            renewals,
-            alg=Uniform(),
-            controller = ModelControl(
-                simulation=true
-                ),
-                β=.95
+            renewals[1],
+            β=.95
         )
 
         r,r_d = simulate(par, md)
