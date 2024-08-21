@@ -8,8 +8,8 @@ function thresholds(par, md, σⁱ)
     T = length(md.hz)
     N = size(md.X,1)
     S = length(md.x)
-    V = zeros(N,md.ngrid)
-    r̄ = zeros(T)
+    V = zeros(eltype(par), N,md.ngrid)
+    r̄ = zeros(eltype(par), T)
     
     r1 = collect(LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid))
 

@@ -63,16 +63,3 @@ function prepare_data(md::ModelData)
 
     return x
 end
-
-# Return struct
-struct RRS
-    r_d
-    r
-end
-
-struct MemAlloc
-    μ
-    V
-    r̄
-    σⁱ
-end
