@@ -1,4 +1,4 @@
-function patenthz(rrs::RRS, par, md::ModelData, ma::MemAlloc)
+function patenthz(rrs::RRS, par, md::ModelData)
     """
     # Arguments
     par::Vector{Float64}: vector containing parameters for the distribution of patent exirations.
@@ -15,27 +15,28 @@ function patenthz(rrs::RRS, par, md::ModelData, ma::MemAlloc)
     N = size(md.X,1)
     S = length(md.x)
 
-    ma.σⁱ .= md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
-    # σⁱ = md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
-    @inline thresholds(par, md, ma)
+    # ma.σⁱ .= md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
+    σⁱ = md.s_data*par[6+size(md.X,2):6+size(md.X,2)+size(md.s_data, 2)-1]
+    r̄ = thresholds(par, md, σⁱ)
 
     # Compute initial shock parameters
     σ = par[5]
     β = par[6:6+size(md.X,2)-1]
-    ma.μ .= md.X*β
+    # ma.μ .= md.X*β
+    μ = md.X*β
 
-    rrs.r[:,1] .= quantile.(LogNormal.(ma.μ, σ), md.x[1]) # shocks[:,1,s]
-    rrs.r_d[:,1] .= rrs.r[:,1] .≥ ma.r̄[1]
+    rrs.r[:,1] .= quantile.(LogNormal.(μ, σ), md.x[1]) # shocks[:,1,s]
+    rrs.r_d[:,1] .= rrs.r[:,1] .≥ r̄[1]
     rrs.r[:,1] .= rrs.r[:,1].*rrs.r_d[:,1]
 
     o = md.obsolence.≤θ
     @inbounds for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
-        rrs.r[:,t] .= o[t-1].*max(δ.*rrs.r[:,t-1], invF(md.x[t], t, ϕ, ma.σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
+        rrs.r[:,t] .= o[t-1].*max(δ.*rrs.r[:,t-1], invF(md.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
         rrs.r[:,t] .= rrs.r[:,t].*rrs.r_d[:,t-1]
         # Patent is kept active if its value exceed the threshold o.w. set to zero
-        rrs.r_d[:,t] .= rrs.r[:,t] .> ma.r̄[t]
+        rrs.r_d[:,t] .= rrs.r[:,t] .> r̄[t]
     end
 end
 
@@ -54,12 +55,6 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
         Threads.@spawn begin
             # The simulation loop. Repeats DGP S times for S different realizations of RQMC 
             md_copy = deepcopy(md)
-            ma = MemAlloc(
-                zeros(eltype(par),N),
-                zeros(eltype(par),T,md.ngrid),
-                zeros(eltype(par),T),
-                zeros(eltype(par),N)
-            )
             rrs = RRS(
                 zeros(eltype(par),N,T),
                 zeros(eltype(par),N,T)
@@ -69,7 +64,7 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
                 md_copy.x[:,:] .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
                 md_copy.obsolence[:,:] .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
                 # Simulate the DGP once
-                @inline patenthz(rrs,par,md_copy,ma)
+                @inline patenthz(rrs,par,md_copy)
                 # Save results
                 r.+=rrs.r
                 r_d.+=rrs.r_d
