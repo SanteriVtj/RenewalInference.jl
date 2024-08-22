@@ -86,6 +86,7 @@ function fval(par,md;S=1000,nt=Threads.nthreads())
     W = sqrt.(r_d/S)'
     # Compute simulation hazard rates
     hz = reduce(hcat, modelhz.(eachrow(r_d),S))
+    return hz
     # Create the deviation matrix for individual hazard rates
     hz[CartesianIndex.(zip(convert.(Int, md.renewals),1:17))].-=1
     # Compute aggregate errors for each age cohort

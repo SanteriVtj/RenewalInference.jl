@@ -14,7 +14,7 @@
 
         # par = [.85, .4, .8, .95, 2.5, 5., .1, .2, -.3, 1000, 1000];
         # par = [.85, .4, .8, .95, 2.5, 5., .1, 0, 1000];
-        par = [.9, 500., .85, .95, 3., 3., 10, 2, 4, 2, 100.]
+        par = [.9, 500., .85, .95, 2., 2., .7, 5, 4, 2, 100.]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         data_stopping = min.(T,max.(data_stopping,1))

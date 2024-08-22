@@ -30,5 +30,6 @@ module RenewalInference
         simulate,
         fval,
         MemAlloc,
-        gen_sample
+        gen_sample,
+        show_parameters
 end
