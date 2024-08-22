@@ -32,7 +32,7 @@ function patenthz(par, md::ModelData)
     r[:,1] .= r[:,1].*r_d[:,1]
 
     o = md.obsolence.≤θ
-    @inbounds for t=2:T
+    for t=2:T
         # compute patent value at t by maximizing between learning shocks and depreciation
         r[:,t] .= o[t-1].*max(δ.*r[:,t-1], invF(md.x[t], t, ϕ, σⁱ, γ)) # concat as n×2 matrix and choose maximum in for each row
         # If patent wasn't active in t-1 it cannot be active in t
@@ -61,8 +61,8 @@ function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=
             md_copy = deepcopy(md)
             for s in chunk
                 # Replace the sample with RQMC sample
-                md_copy.x[:,:] .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
-                md_copy.obsolence[:,:] .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
+                md_copy.x .= randomize(QuasiMonteCarlo.sample(T,1,alg), shifting)
+                md_copy.obsolence .= randomize(QuasiMonteCarlo.sample(T-1,1,alg), shifting)
                 # Simulate the DGP once
                 r, r_d = patenthz(par,md_copy)
                 # Save results
@@ -78,7 +78,7 @@ end
 
 function fval(par,md;S=1000,nt=Threads.nthreads())
     T = length(md.costs)
-    @assert all((md.renewals .≤ T).&(1 .≤ md.renewals)) "Given renewals must be within the support of data."
+    @assert all((md.renewals .≤ T).&(0 .≤ md.renewals)) "Given renewals must be within the support of data."
     N = size(md.X, 1)
     # Run the simulation
     r,r_d=simulate(par, md, S=S, nt=nt)
@@ -86,11 +86,14 @@ function fval(par,md;S=1000,nt=Threads.nthreads())
     W = sqrt.(r_d/S)'
     # Compute simulation hazard rates
     hz = reduce(hcat, modelhz.(eachrow(r_d),S))
-    return hz
     # Create the deviation matrix for individual hazard rates
     hz[CartesianIndex.(zip(convert.(Int, md.renewals),1:17))].-=1
     # Compute aggregate errors for each age cohort
     ind_err = diag(hz.*W*hz')
     # return the total error as fval
     return ind_err'*ind_err
+    
+    ### Optional loass ###
+    # err = (abs.(diff([S*ones(N) r_d], dims=2))*(1:T) .- md.renewals)
+    # return err'*err
 end

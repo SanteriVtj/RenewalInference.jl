@@ -69,25 +69,3 @@ function show_parameters(par,md)
     println("Learning parameters:  σⁱ_par = $σⁱ_par")
     nothing
 end
-
-function gen_sample(par,md)
-    T = length(md.costs)
-
-    renewals = zeros(size(md.X,1))
-    r_d_res = zeros(size(md.X,1),T)
-    for i in 1:size(md.X,1)
-        md_sim = ModelData(
-            zeros(Float64, 17),
-            md.costs,
-            reshape(md.X[i,:],1,size(md.X,2)),
-            reshape(md.s_data[i,:],1,size(md.s_data,2)),
-            zeros(1),
-            alg=Uniform()
-        )
-        r,r_d = simulate(par, md_sim,S=1)
-        r_d_res[i,:] .= r_d[:]
-        lastperiod = findfirst(r_d .==0)
-        renewals[i] = isnothing(lastperiod) ? T :  lastperiod.I[2]-1
-    end
-    return renewals, r_d_res
-end

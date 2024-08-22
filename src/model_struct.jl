@@ -1,10 +1,3 @@
-mutable struct ModelControl
-    simulation::Bool
-    debug::Bool
-    ae_mode::Bool
-    ModelControl(;simulation=false, debug=false, ae_mode=false) = new(simulation, debug, ae_mode)
-end
-
 struct ModelData
     hz::Vector{Float64}
     costs::Vector{Float64}
@@ -15,10 +8,9 @@ struct ModelData
     β::Float64
     renewals::Vector{Float64}
     ngrid::Int16
-    controller::ModelControl
     alg::Union{Sampleable, SamplingAlgorithm}
     function ModelData(
-        hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller;
+        hz, costs, X, s_data, x, obsolence, renewals, ngrid;
         β=.95, alg=QuasiMonteCarlo.HaltonSample()
     )
         # Define dimensions
@@ -32,14 +24,14 @@ struct ModelData
         N == size(s_data, 1) ? nothing : throw(AssertionError("Number of observations and data for σⁱ doesn't match."))
         
         # If all tests are satisfied, create new instance
-        new(hz, costs, X, s_data, x, obsolence, β, renewals, ngrid, controller, alg)
+        new(hz, costs, X, s_data, x, obsolence, β, renewals, ngrid, alg)
     end
 end
 
 # Function for generating new instance of ModelData with default (Halton)samples
 # and other preallocated matrices.
 function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float64}, s_data::Matrix{Float64}, renewals::Vector{Float64};
-    alg=QuasiMonteCarlo.HaltonSample(), ngrid=1000, controller=ModelControl(), β=.95
+    alg=QuasiMonteCarlo.HaltonSample(), ngrid=1000, β=.95
 )
     # Inference dimensions for simulation draws
     N = size(X, 1)
@@ -50,7 +42,7 @@ function ModelData(hz::Vector{Float64}, costs::Vector{Float64}, X::Matrix{Float6
     x = QuasiMonteCarlo.sample(t,1,alg)
 
     return ModelData(
-        hz, costs, X, s_data, x, obsolence, renewals, ngrid, controller, alg=alg, β=β
+        hz, costs, X, s_data, x, obsolence, renewals, ngrid, alg=alg, β=β
     )
 end
 

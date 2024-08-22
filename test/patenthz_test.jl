@@ -2,19 +2,14 @@
     @test let
         # Definitely not a test
         using Revise, RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView
-        # ϕ, γ, δ, θ
-        # par = [.9, .6, .9, .95];
-        # append!(par, [5., .2, .1, 200, 3])
+        using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView, Random
+        Random.seed!(1729)
+        
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
-        # append!(par, [2., 8, 0.1, 0.2, -.3])
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
         N=1000;T=length(c)
-        # X = hcat(ones(N), rand(Normal(μ,σ),N,K))
-
-        # par = [.85, .4, .8, .95, 2.5, 5., .1, .2, -.3, 1000, 1000];
-        # par = [.85, .4, .8, .95, 2.5, 5., .1, 0, 1000];
-        par = [.9, 500., .85, .95, 2., 2., .7, 5, 4, 2, 100.]
+        
+        par = [.9, 200., .9, .95, 1.8, 1.1, .7, 3, 2, 5, 2]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         data_stopping = min.(T,max.(data_stopping,1))
@@ -45,29 +40,40 @@
             # Uniform(0,5)
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
-        
+        ### Simulate data ###
         md_sim = ModelData(
             zeros(Float64, 17),
             Vector{Float64}(c),
             X,
             dσ,
             data_stopping,
-            alg=Uniform(),
-            controller = ModelControl(
-                simulation=true
-                ),
-                β=.95
+            alg=Uniform()
         )
-        renewals = gen_sample(par,md_sim)
-        md = ModelData(
-            zeros(Float64, 17),
-            Vector{Float64}(c),
-            X,
-            dσ,
-            renewals[1],
-            β=.95
-        )
+        r,r_d = patenthz(par,md_sim)
+        Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
+        Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N))
+        # renewals = findfirst.(eachrow(r_d.==0))
+        # renewals[isnothing.(renewals)] .= T
+        # renewals = convert(Vector{Float64}, renewals)
+        # md = ModelData(
+        #     zeros(Float64, 17),
+        #     Vector{Float64}(c),
+        #     X,
+        #     dσ,
+        #     renewals,
+        #     β=.95
+        # )
+        
+        # md = ModelData(
+        #     zeros(Float64, 17),
+        #     Vector{Float64}(c),
+        #     X,
+        #     dσ,
+        #     vec(sum(r_d,dims=2)),
+        #     β=.95
+        # )
 
+        fval(par,md,S=100)
         r,r_d = simulate(par, md, S=25)
         RenewalInference.modelhz(sum(r_d, dims=1),1000^2)
         histogram([i.I[2] for i in argmax(-diff(r_d,dims=2),dims=2)],alpha=.3)
@@ -75,17 +81,7 @@
 
         patenthz(rrs_sim,par,md_sim,ma_sim)
 
-
-        ma = MemAlloc(
-            zeros(eltype(par),N),
-            zeros(eltype(par),T,md.ngrid),
-            zeros(eltype(par),T),
-            zeros(eltype(par),N)
-        )
-        rrs = RRS(
-            zeros(eltype(par),N,T),
-            zeros(eltype(par),N,T)
-        )
+        
         # Plots.plot(sum(x[end], dims=1)'/N, label=false)
         # Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
         # Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)

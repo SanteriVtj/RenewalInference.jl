@@ -23,13 +23,11 @@ module RenewalInference
         patenthz,
         patentSMM,
         ModelData,
-        ModelControl,
         plot_paramdist,
         prepare_data,
         RRS,
         simulate,
         fval,
         MemAlloc,
-        gen_sample,
         show_parameters
 end
