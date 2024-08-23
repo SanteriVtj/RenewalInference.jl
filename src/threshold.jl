@@ -13,20 +13,18 @@ function thresholds(par, md, σⁱ)
     
     r1 = collect(LinRange(0, maximum(c)+maximum(c)/ngrid, ngrid))
 
-    # Compute values for t=T i.e. the last period from which the backwards induction begins
-    @inbounds begin 
-        V[T,:] .= vec(r1' .- c[T])
-        idx = findfirst(V[T,:].>zero(eltype(par)))
-        m_idx = max(idx-1,1)
+    # Compute values for t=T i.e. the last period from which the backwards induction begins 
+    V[T,:] .= vec(r1' .- c[T])
+    idx = findfirst(V[T,:].>zero(eltype(par)))
+    m_idx = max(idx-1,1)
 
-        r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
-            (V[T,idx]-V[T,m_idx]);
-        V[T,:] .= max(V[T,:], zeros(ngrid))
-    end
+    r̄[T] = (r1[m_idx]*V[T,idx]-r1[idx]*V[T,m_idx])/
+        (V[T,idx]-V[T,m_idx]);
+    V[T,:] .= max(V[T,:], zeros(ngrid))
 
     o = md.obsolence.≤θ
 
-    @inbounds for t=T-1:-1:1
+    for t=T-1:-1:1
         # Allocation for temp variables
         interp = linear_interpolation(
             r1,

@@ -2,14 +2,14 @@
     @test let
         # Definitely not a test
         using Revise, RenewalInference, QuasiMonteCarlo, BenchmarkTools, Plots, InteractiveUtils, Optimization, Distributions, ForwardDiff, OptimizationOptimJL, CSV, DataFrames, KernelDensity, CairoMakie, LinearAlgebra
-        using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView, Random
+        using Interpolations, StatsBase, HypothesisTests, LaTeXStrings, Measures, Debugger, StructArrays, ProfileView, Random, Optim
         Random.seed!(1729)
         
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
         N=1000;T=length(c)
         
-        par = [.9, 200., .9, .95, 1.8, 1.1, .7, 3, 2, 5, 2]
+        par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 10, 10]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         data_stopping = min.(T,max.(data_stopping,1))
@@ -41,164 +41,47 @@
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
         ### Simulate data ###
-        md_sim = ModelData(
+        r = zeros(N,T);
+        r_d = zeros(N,T);
+        for i in 1:N
+            md_sim = ModelData(
+                zeros(Float64, 17),
+                Vector{Float64}(c),
+                X,
+                dσ,
+                data_stopping,
+                alg=Uniform()
+            )
+            a,b = patenthz(par,md_sim)
+            r[i,:] .= a[i,:]
+            r_d[i,:] .= b[i,:]
+        end
+        Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
+        Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N))
+        mean(r,dims=1)
+
+        renewals = findfirst.(eachrow(r_d.==0))
+        renewals[isnothing.(renewals)] .= T
+        renewals = convert(Vector{Float64}, renewals)
+        md = ModelData(
             zeros(Float64, 17),
             Vector{Float64}(c),
             X,
             dσ,
-            data_stopping,
-            alg=Uniform()
+            renewals
         )
-        r,r_d = patenthz(par,md_sim)
-        Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
-        Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N))
-        # renewals = findfirst.(eachrow(r_d.==0))
-        # renewals[isnothing.(renewals)] .= T
-        # renewals = convert(Vector{Float64}, renewals)
-        # md = ModelData(
-        #     zeros(Float64, 17),
-        #     Vector{Float64}(c),
-        #     X,
-        #     dσ,
-        #     renewals,
-        #     β=.95
-        # )
-        
-        # md = ModelData(
-        #     zeros(Float64, 17),
-        #     Vector{Float64}(c),
-        #     X,
-        #     dσ,
-        #     vec(sum(r_d,dims=2)),
-        #     β=.95
-        # )
-
         fval(par,md,S=100)
-        r,r_d = simulate(par, md, S=25)
-        RenewalInference.modelhz(sum(r_d, dims=1),1000^2)
-        histogram([i.I[2] for i in argmax(-diff(r_d,dims=2),dims=2)],alpha=.3)
-        histogram!(renewals,alpha=.3)
-
-        patenthz(rrs_sim,par,md_sim,ma_sim)
-
-        
-        # Plots.plot(sum(x[end], dims=1)'/N, label=false)
-        # Plots.plot(size=(1300,900),xlabel="Year",ylabel="hz",left_margin=5mm,title=L"Simulated hazard rates with $\sigma_i\sim 1000 B\left(\frac{3}{4}\right)$")
-        # Plots.plot!(x[end][vec(dσ.==1),:]',label=false,color=:darkred,alpha=.2)
-        # Plots.plot!(x[end][vec(dσ.==0),:]',label=false,color=:darkblue,alpha=.2)
-        md = ModelData(
-            vec(mean(x[end], dims=1)),
-            Vector{Float64}(c),
-            X,
-            dσ,
-            data_stopping,
-            controller = ModelControl(),
-            β=.95,
-            S=250
-        )
-        # md_sim_dual = ModelData(
-        #     zeros(ForwardDiff.Dual, 17),
-        #     Vector{ForwardDiff.Dual}(c),
-        #     convert(Matrix{ForwardDiff.Dual}, X),
-        #     convert(Matrix{ForwardDiff.Dual}, dσ)
-        # )
-        # ForwardDiff.derivative(a->patenthz([.0, .0, a, 1., 2., 1.8, .1, .2, a, 0, 0],md), .5)
-        # patenthz([.0, .0, .5, 1., 2., 1.8, .1, .2, -.3, 0, 0],md_sim)
-        ForwardDiff.gradient(a->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md), [.5, 1, 5])
-
-        # s = reverse(cumsum(rand(1:50, 10)))
-        # s = [284,255,249,246,205,161,114,76,72,24]
-        # ForwardDiff.jacobian(s->RenewalInference.modelhz(s, 300), [284,255,249,246,205,161,114,76,0,0])
-        # α = 8. #mean of initial returns
-        # σ = 2 #standard deviation of initial returns
-        # δ = 0.2 #decay rate of returns
-        # β = [0.1,0.2,-.3]
-        # optF = OptimizationFunction((a,x)->patenthz([.0, .0, a[1], 1., a[2], a[3], .1, .2, -.3, 0, 0],md))
-        optF = OptimizationFunction((a,x)->patenthz([.0, .0, .8, 1., 2, 8, .1, .2, a[1], 0, 0],md), Optimization.AutoForwardDiff())
-        prob = OptimizationProblem(optF, [.5], [0], )
-        @time res = solve(prob, LBFGS())
-
-        ForwardDiff.gradient(a->patenthz(a,md_sim), par)
-
-        x=patenthz(par,md_sim)
-        emp_stopping = findfirst.(eachrow(x[end].!=1))
-        emp_stopping[emp_stopping.==nothing] .= length(c)+1
-        stop_count = [get(countmap(emp_stopping), i, 0) for i in 1:Int(maximum(emp_stopping))]
-        Plots.plot(x[1], labels=false)
-        
-        Plots.bar([get(countmap(emp_stopping), i, 0) for i in 1:Int(maximum(emp_stopping))], alpha=.5, label="Stochastic")
-        # Plots.bar(emp_stopping.-[0;emp_stopping[1:end-1]], alpha=.5, label="Stochastic")
-        Plots.bar!([get(countmap(data_stopping), i, 0) for i in 1:Int(maximum(data_stopping))], alpha=.5, label="Static")
-        
-        println(ChisqTest([countmap(emp_stopping)[i] for i in 1:Int(maximum(data_stopping))], [countmap(data_stopping)[i] for i in 1:Int(maximum(data_stopping))]))
-        
-        # emp_data = hcat(prepare_data(md_sim), emp_stopping)
-        # ae_data = AEData(emp_data)
-        md = ModelData(
-            vec(x[1]),
-            Vector{Float64}(c),
-            X,
-            dσ,
-            controller = ModelControl()
-        )
-        y = patenthz(par,md)
-        #     δ    σ  μ   β...
-        p0 = [.75, 3, 10, .5,.5,.5]
-        optF = OptimizationFunction((a,x)->patenthz([.0, .0, a[1], 1., a[2], a[3], a[4], a[5], a[6], 0, 0],md))
-        prob = OptimizationProblem(optF, p0, [0])
-        res = solve(prob, NelderMead())
-
-
-        ### Reduced ###
-        opt_patent = OptimizationFunction(
-            (a,x)->patenthz([.0, .0, a[1], 1., a[2], a[3], a[4], a[5], a[6], 0, 0],md)
+        res =  optimize(
+            a->fval([a[1], 10., .85, .95, 2, 2, .7, 3, 2, 10, 10], md),
+            rand(1),
+            NelderMead()
         )
         
-        res = Dict()
-        @time for i in 1:1 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
-            @show i
-            x0 = [.75, 3, 10, .5,.5,.5]
-            # x0 = par .+ par./50 .* (-1).^rand(0:1, 9)
-
-            prob = OptimizationProblem(
-                opt_patent,
-                x0, 
-                [0],
-                lb = [0.,    0, 0,  0,  0,  0],
-                ub = [1.,    Inf, Inf,  1,  1, 1]
-            )
-            
-            @time res[i] = solve(prob, NelderMead())
-        end
-        ###############
-
-        ### AE ###
-        x0 = par .+ par./50 .* (-1).^rand(0:1, 9)
-        @time ae_res = Optim.optimize(
-            (a)->AEloss(
-                a,
-                md, 
-                ae_data,
-                save="C:/Users/Santeri/Desktop/rand-par-ae-estimate.csv",
-                save_pred="C:/Users/Santeri/Desktop/rand-par-ae-estimate-pred.csv"
-            ),
-            [0.,    0, 0,  0,  0,  0,      -Inf,   -Inf,  -Inf],
-            [1.,    1, 1,  1,  Inf,  Inf,    Inf,    Inf,    Inf],
-            x0, 
-            NelderMead(),
-            Optim.Options(
-                x_tol=1e-2,
-                g_tol=1e-2,
-                f_tol=1e-2,
-                store_trace=true
-            )
-        )
-        ##########
         
-        opt_patent = OptimizationFunction(
-            (a,x)->patenthz(a,md)
-        )
+
+
         
+       
         res = Dict()
         @time for i in 1:25 #ϕ=.725:.05:.775, σⁱ=17500:5000:22500, γ=.475:.05:.525, δ=.925:.05:.975, θ=.925:.05:.975
             @show i

@@ -69,3 +69,26 @@ function show_parameters(par,md)
     println("Learning parameters:  σⁱ_par = $σⁱ_par")
     nothing
 end
+
+function gen_sample(par,md)
+    r = zeros(N,T);
+    r_d = zeros(N,T);
+    for i in 1:N
+        md_sim = ModelData(
+            zeros(Float64, 17),
+            Vector{Float64}(c),
+            X,
+            dσ,
+            data_stopping,
+            alg=Uniform()
+        )
+        a,b = patenthz(par,md_sim)
+        r[i,:] .= a[i,:]
+        r_d[i,:] .= b[i,:]
+    end
+    return r,r_d
+end
+
+function optimize_n()
+
+end
