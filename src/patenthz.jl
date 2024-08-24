@@ -44,7 +44,7 @@ function patenthz(par, md::ModelData)
     return r, r_d
 end
 
-invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ-γ)
+invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ+γ)
 
 function simulate(par, md; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=Shift(), nt=Threads.nthreads())
     T = length(md.hz)
