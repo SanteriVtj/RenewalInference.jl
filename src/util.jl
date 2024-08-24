@@ -71,15 +71,17 @@ function show_parameters(par,md)
 end
 
 function gen_sample(par,md)
-    r = zeros(N,T);
-    r_d = zeros(N,T);
+    N = size(md.X,1)
+    T = length(md.costs)
+    r = zeros(N,T)
+    r_d = zeros(N,T)
     for i in 1:N
         md_sim = ModelData(
             zeros(Float64, 17),
-            Vector{Float64}(c),
-            X,
-            dσ,
-            data_stopping,
+            Vector{Float64}(md.costs),
+            md.X,
+            md.s_data,
+            zeros(N),
             alg=Uniform()
         )
         a,b = patenthz(par,md_sim)
@@ -89,6 +91,6 @@ function gen_sample(par,md)
     return r,r_d
 end
 
-function optimize_n()
-
+function optimize_n(f,x0)
+    
 end

@@ -9,7 +9,7 @@
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
         N=1000;T=length(c)
         
-        par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 10, 10]
+        par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 50, 150]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
         data_stopping = X[1:N, "renewals"]
         data_stopping = min.(T,max.(data_stopping,1))
@@ -40,24 +40,22 @@
             # Uniform(0,5)
             ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
-        ### Simulate data ###
-        r = zeros(N,T);
-        r_d = zeros(N,T);
-        for i in 1:N
-            md_sim = ModelData(
-                zeros(Float64, 17),
-                Vector{Float64}(c),
-                X,
-                dσ,
-                data_stopping,
-                alg=Uniform()
-            )
-            a,b = patenthz(par,md_sim)
-            r[i,:] .= a[i,:]
-            r_d[i,:] .= b[i,:]
-        end
+        md_sim = ModelData(
+            zeros(Float64, 17),
+            Vector{Float64}(c),
+            X,
+            dσ,
+            zeros(N),
+            alg=Uniform()
+        )
+        r, r_d = gen_sample(par,md_sim)
+        # CSV.write("simulation/r-24-8.csv",DataFrame(r,:auto))
+        # CSV.write("simulation/r_d-24-8.csv",DataFrame(r_d,:auto))
+        # open("simulation/par-24-8.txt","w") do f
+        #     write(f, join(par," "))
+        # end
         Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
-        Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N))
+        Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N),ylims=(0,1))
         mean(r,dims=1)
 
         renewals = findfirst.(eachrow(r_d.==0))
@@ -72,7 +70,7 @@
         )
         fval(par,md,S=100)
         res =  optimize(
-            a->fval([a[1], 10., .85, .95, 2, 2, .7, 3, 2, 10, 10], md),
+            a->fval([a[1], 10., .85, .95, 2, 2, .7, 3, 2, 10, 10], md, S=250),
             rand(1),
             NelderMead()
         )
