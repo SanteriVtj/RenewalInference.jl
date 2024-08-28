@@ -55,3 +55,18 @@ function prepare_data(md::ModelData)
 
     return x
 end
+
+struct Sim
+    x
+    o
+    function Sim(x,o)
+        new(x,o)
+    end
+end
+
+function Sim(T::Int,S::Int;alg=QuasiMonteCarlo.HaltonSample(),shifting=Shift())
+    Sim(
+        randomize(QuasiMonteCarlo.sample(T,S,alg),shifting),
+        randomize(QuasiMonteCarlo.sample(T-1,S,alg),shifting)
+    )
+end

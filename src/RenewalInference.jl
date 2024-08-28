@@ -4,7 +4,8 @@ module RenewalInference
         QuasiMonteCarlo, Random, Interpolations,
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
         MLJ, SimpleChains, CSV, Distances, 
-        ForwardDiff, StructArrays
+        ForwardDiff, StructArrays, Dates, JLD2,
+        Optim
 
     include("model_struct.jl")
     include("model.jl")
@@ -30,5 +31,7 @@ module RenewalInference
         fval,
         MemAlloc,
         show_parameters,
-        gen_sample
+        gen_sample,
+        Sim,
+        optimize_n
 end

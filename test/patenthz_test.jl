@@ -75,6 +75,7 @@
             NelderMead()
         )
         
+        optimize_n(a->a^2,[Uniform()],10)
         
 
 

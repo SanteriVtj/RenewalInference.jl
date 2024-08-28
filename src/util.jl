@@ -91,6 +91,19 @@ function gen_sample(par,md)
     return r,r_d
 end
 
-function optimize_n(f,x0)
-    
+function optimize_n(f,x0,n,lb=nothing,ub=nothing;alg=NelderMead(),options=Optim.Options())
+    name = now().instant.periods.value
+    mkdir("$name")
+    lb = isnothing(lb) ? -Inf*ones(length(x0)) : lb
+    ub = isnothing(ub) ? Inf*ones(length(x0)) : ub
+    for i in 1:n
+        res = optimize(
+            f,
+            lb,
+            ub,
+            rand.(x0),
+            alg
+        )
+        save_object("$name/$i.jld2", res)
+    end
 end
