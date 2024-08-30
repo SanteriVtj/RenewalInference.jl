@@ -61,8 +61,8 @@ function simulate(par, md, sim; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shif
             md_copy = deepcopy(md)
             for s in chunk
                 # Replace the sample with RQMC sample
-                md_copy.x .= sim.x[s,:]
-                md_copy.obsolence .= sim.o[s,:]
+                md_copy.x .= reshape(sim.x[s,:],1,T)
+                md_copy.obsolence .= reshape(sim.o[s,:],1,T-1)
                 # Simulate the DGP once
                 r, r_d = patenthz(par,md_copy)
                 # Save results
@@ -96,4 +96,20 @@ function fval(par,md,sim;S=1000,nt=Threads.nthreads())
     ### Optional loass ###
     # err = (abs.(diff([S*ones(N) r_d], dims=2))*(1:T) .- md.renewals)
     # return err'*err
+end
+
+function fval2(par,md,sim;S=1000,nt=Threads.nthreads())
+    T = length(md.costs)
+    @assert all((md.renewals .≤ T).&(0 .≤ md.renewals)) "Given renewals must be within the support of data."
+    N = size(md.X, 1)
+    # Run the simulation
+    r,r_d=simulate(par, md, sim, S=S, nt=nt)
+    survivors = sum(r_d,dims=1)'
+    # Construct individual patent simulation weighting matrix for the W-norm
+    W = Diagonal(vec(sqrt.(survivors/(S*N))))
+    hz = modelhz(survivors,N*S)
+    res = hz.-md.hz
+    err = res'*W*res
+    @assert length(err)==1
+    return first(err)
 end
