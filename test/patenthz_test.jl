@@ -7,7 +7,7 @@
         
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
-        N=1000;T=length(c)
+        N=1000;T=length(c);S=500
         
         par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 50, 150]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
@@ -48,7 +48,12 @@
             zeros(N),
             alg=Uniform()
         )
-        r, r_d = gen_sample(par,md_sim)
+
+        r_d=Matrix(CSV.read("simulation/r_d-24-8.csv",DataFrame))
+
+        # r, r_d = gen_sample(par,md_sim)
+        
+        
         # CSV.write("simulation/r-24-8.csv",DataFrame(r,:auto))
         # CSV.write("simulation/r_d-24-8.csv",DataFrame(r_d,:auto))
         # open("simulation/par-24-8.txt","w") do f
@@ -62,20 +67,14 @@
         renewals[isnothing.(renewals)] .= T
         renewals = convert(Vector{Float64}, renewals)
         md = ModelData(
-            zeros(Float64, 17),
+            vec(RenewalInference.modelhz(sum(r_d,dims=1)',N)),
             Vector{Float64}(c),
             X,
             dσ,
             renewals
         )
-        fval(par,md,S=100)
-        res =  optimize(
-            a->fval([a[1], 10., .85, .95, 2, 2, .7, 3, 2, 10, 10], md, S=250),
-            rand(1),
-            NelderMead()
-        )
-        
-        optimize_n(a->a^2,[Uniform()],10)
+        sim = Sim(T,S)
+        r,r_d = simulate(par,md,sim,S=S)
         
 
 
