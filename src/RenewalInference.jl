@@ -33,5 +33,6 @@ module RenewalInference
         show_parameters,
         gen_sample,
         Sim,
-        optimize_n
+        optimize_n,
+        fval2
 end

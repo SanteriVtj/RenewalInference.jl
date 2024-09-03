@@ -7,7 +7,7 @@
         
         c = [116, 138, 169, 201, 244, 286, 328, 381, 445, 508, 572, 646, 720, 794, 868, 932, 995];
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
-        N=1000;T=length(c);S=500
+        N=1000;T=length(c);S=1000
         
         par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 50, 150]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
@@ -28,17 +28,18 @@
         dσ = hcat(ones(N),dσ)
 
         p0 = [
-            Uniform(.5,.8),
-            Uniform(.5,.9),
-            Uniform(.7,1),
-            Uniform(.5,1),
-            Uniform(.5,1),
-            Uniform(.5,1),
+            Uniform(),
+            Uniform(0,50),
+            Uniform(),
+            Uniform(),
             Uniform(0,5),
-            Uniform(0,2_000),
-            Uniform(0,10),
-            # Uniform(0,5)
-            ];
+            Uniform(0,4),
+            Normal(),
+            Normal(),
+            Normal(),
+            Normal(),
+            Normal(),
+        ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
         md_sim = ModelData(
             zeros(Float64, 17),
@@ -49,14 +50,14 @@
             alg=Uniform()
         )
 
-        r_d=Matrix(CSV.read("simulation/r_d-24-8.csv",DataFrame))
-
+        r_d=Matrix(CSV.read("simulation/r_d-30-8.csv",DataFrame))
+        r=Matrix(CSV.read("simulation/r-30-8.csv",DataFrame))
         # r, r_d = gen_sample(par,md_sim)
         
         
-        # CSV.write("simulation/r-24-8.csv",DataFrame(r,:auto))
-        # CSV.write("simulation/r_d-24-8.csv",DataFrame(r_d,:auto))
-        # open("simulation/par-24-8.txt","w") do f
+        # CSV.write("simulation/r-30-8.csv",DataFrame(r,:auto))
+        # CSV.write("simulation/r_d-30-8.csv",DataFrame(r_d,:auto))
+        # open("simulation/par-30-8.txt","w") do f
         #     write(f, join(par," "))
         # end
         Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
@@ -74,8 +75,13 @@
             renewals
         )
         sim = Sim(T,S)
-        r,r_d = simulate(par,md,sim,S=S)
         
+        f(x) = RenewalInference.fval2([.85, 10, first(x), .95, 2, 2, .7, 3, 2, 50, 150],md,sim)
+        # lb = [0, 0,     0, 0, 0,    0,      -Inf,   -Inf,   -Inf,   -Inf,   -Inf]
+        # ub = [1, Inf,   1, 1, Inf,  Inf,    Inf,    Inf,    Inf,    Inf,    Inf]
+        lb = [0.]
+        ub = [1.]
+        optimize_n(f, [Uniform()], 25,lb,ub,options=Optim.Options(time_limit=3*(60*60),extended_trace=true))
 
 
         

@@ -110,6 +110,6 @@ function fval2(par,md,sim;S=1000,nt=Threads.nthreads())
     hz = modelhz(survivors,N*S)
     res = hz.-md.hz
     err = res'*W*res
-    @assert length(err)==1
+    @assert length(err)==1 "Dimensions of error are not correct"
     return first(err)
 end

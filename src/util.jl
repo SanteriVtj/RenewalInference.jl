@@ -102,7 +102,8 @@ function optimize_n(f,x0,n,lb=nothing,ub=nothing;alg=NelderMead(),options=Optim.
             lb,
             ub,
             rand.(x0),
-            alg
+            alg,
+            options
         )
         save_object("$name/$i.jld2", res)
     end
