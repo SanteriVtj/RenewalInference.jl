@@ -76,7 +76,7 @@
         )
         sim = Sim(T,S)
         
-        f(x) = RenewalInference.fval2([.85, 10, first(x), .95, 2, 2, .7, 3, 2, 50, 150],md,sim)
+        f(x) = fval([.85, 10, first(x), .95, 2, 2, .7, 3, 2, 50, 150],md,sim)
         # lb = [0, 0,     0, 0, 0,    0,      -Inf,   -Inf,   -Inf,   -Inf,   -Inf]
         # ub = [1, Inf,   1, 1, Inf,  Inf,    Inf,    Inf,    Inf,    Inf,    Inf]
         lb = [0.]
