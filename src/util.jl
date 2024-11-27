@@ -1,9 +1,9 @@
-function plot_paramdist(x, real; cols = 2)
+function plot_paramdist(x, real, size; cols = 2)
     names = DataFrames.names(x)
 
     rows = mod(length(names), 2) == 0 ? length(names) ÷ cols : length(names) ÷ 2+1
 
-    fig = Figure(size = (400*rows, 600*cols))
+    fig = Figure(size = size)
     axs = [Axis(fig[i,j]) for i=1:rows, j=1:cols]
 
     res = Dict(i=>kde(x[:,i]) for i in names)
@@ -91,20 +91,28 @@ function gen_sample(par,md)
     return r,r_d
 end
 
-function optimize_n(f,x0,n,lb=nothing,ub=nothing;alg=NelderMead(),options=Optim.Options())
+function optimize_n(f,x0,n,lb=nothing,ub=nothing;alg=NelderMead(),options=Optim.Options(),inner=Fminbox(NelderMead()))
     name = now().instant.periods.value
     mkdir("$name")
     lb = isnothing(lb) ? -Inf*ones(length(x0)) : lb
     ub = isnothing(ub) ? Inf*ones(length(x0)) : ub
     for i in 1:n
-        res = optimize(
+        println("------------ $i ------------")
+        println(Dates.now())
+        @time res = optimize(
             f,
             lb,
             ub,
             rand.(x0),
-            alg,
+            inner,
             options
         )
         save_object("$name/$i.jld2", res)
+        println("----------------------------")
     end
+end
+
+function g_tol_break(x)
+    isnan(x[1].g_norm) ? println("Terminating g_tol=NaN") : nothing
+    return isnan(x[1].g_norm)
 end

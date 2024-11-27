@@ -5,7 +5,7 @@ module RenewalInference
         LinearAlgebra, CairoMakie, DataFrames, KernelDensity,
         MLJ, SimpleChains, CSV, Distances, 
         ForwardDiff, StructArrays, Dates, JLD2,
-        Optim
+        Optim, Dates
 
     include("model_struct.jl")
     include("model.jl")
@@ -28,11 +28,12 @@ module RenewalInference
         prepare_data,
         RRS,
         simulate,
-        fval,
         MemAlloc,
         show_parameters,
         gen_sample,
         Sim,
         optimize_n,
-        fval2
+        fval,
+        fval2,
+        g_tol_break
 end

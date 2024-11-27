@@ -44,7 +44,7 @@ function patenthz(par, md::ModelData)
     return r, r_d
 end
 
-invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ+γ)
+invF(z, t, ϕ, σⁱ, γ) = @. -(log(1-z)*ϕ^(t-1)*σⁱ+γ/(ϕ^(t-1)*σⁱ))
 
 function simulate(par, md, sim; S=1000, alg=QuasiMonteCarlo.HaltonSample(), shifting=Shift(), nt=Threads.nthreads())
     T = length(md.hz)
@@ -83,15 +83,17 @@ function fval(par,md,sim;S=1000,nt=Threads.nthreads())
     # Run the simulation
     r,r_d=simulate(par, md, sim, S=S, nt=nt)
     # Construct individual patent simulation weighting matrix for the W-norm
-    W = sqrt.(r_d/S)'
+    # W = sqrt.(r_d/S)'
     # Compute simulation hazard rates
     hz = reduce(hcat, modelhz.(eachrow(r_d),S))
     # Create the deviation matrix for individual hazard rates
     hz[CartesianIndex.(zip(convert.(Int, md.renewals),1:17))].-=1
     # Compute aggregate errors for each age cohort
-    ind_err = diag(hz.*W*hz')
+    # ind_err = diag(hz.*W*hz')
+    ind_err = hz.^2
     # return the total error as fval
-    return ind_err'*ind_err
+    # return ind_err'*ind_err
+    return sum(ind_err)
     
     ### Optional loass ###
     # err = (abs.(diff([S*ones(N) r_d], dims=2))*(1:T) .- md.renewals)
