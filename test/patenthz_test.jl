@@ -9,13 +9,15 @@
         # σ, β11, β12 (μ = β11+ β12x), β21, β22 (σⁱ = β21 + β22x)
         N=1000;T=length(c);S=1000
         
-        par = [.85, 10., .85, .95, 2, 2, .7, 3, 2, 50, 150]
+        # par = [.85, .5, .85, .9, 1., 1., .7, 3, 2, 500, 1500]
+        par = [.85, .5, .85, .9, 1., 1., 1.2, 500, 1500]
+        # par = [1, 0., .85, 1, 1.5, 1.5, 1.7, 0]
         X=CSV.read("C:/Users/Santeri/Downloads/Deterministic/inv_chars_det_data.csv", DataFrame)
-        data_stopping = X[1:N, "renewals"]
-        data_stopping = min.(T,max.(data_stopping,1))
-        X = Matrix(X[1:N,["age", "sex","humanities"]])
+        # data_stopping = X[1:N, "renewals"]
+        # data_stopping = min.(T,max.(data_stopping,1))
+        X = Matrix(X[1:N,["age"]])
         X = hcat(ones(N),X)
-        r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
+        # r_mul = CSV.read("C:/Users/Santeri/Downloads/Deterministic/r_mul.csv", DataFrame)
         # data_stopping = X[:, "renewals_paid"]
         # X=Matrix(X[:,["inventor_age", "sex", "humanities"]])
         # X=zeros(N,3)
@@ -24,21 +26,22 @@
         # X = Matrix(rand(MvNormal(ones(1),I(1)),30_000)')
         # X = rand(Normal(0, 1), N, 1);
 
-        dσ = float.(rand(Bernoulli(.75), N, 1));
-        dσ = hcat(ones(N),dσ)
+        # dσ = float.(rand(Bernoulli(.75), N, 1));
+        # dσ = hcat(ones(N),dσ)
+        dσ = ones(N,1)
 
         p0 = [
             Uniform(),
-            Uniform(0,50),
+            Normal(150,15),
             Uniform(),
             Uniform(),
-            Uniform(0,5),
-            Uniform(0,4),
-            Normal(),
-            Normal(),
-            Normal(),
-            Normal(),
-            Normal(),
+            # Uniform(1,2),
+            # Uniform(1,2),
+            # Normal(),
+            # Normal(),
+            # Normal(),
+            Normal(500,50),
+            # Normal(1500,150),
         ];
         x0 = collect(Iterators.flatten(rand.(p0, 1)))
         md_sim = ModelData(
@@ -50,16 +53,16 @@
             alg=Uniform()
         )
 
-        r_d=Matrix(CSV.read("simulation/r_d-30-8.csv",DataFrame))
-        r=Matrix(CSV.read("simulation/r-30-8.csv",DataFrame))
+        r_d=Matrix(CSV.read("simulation/r_d-9-10-stat.csv",DataFrame))
+        r=Matrix(CSV.read("simulation/r-9-10-stat.csv",DataFrame))
         # r, r_d = gen_sample(par,md_sim)
         
         
-        # CSV.write("simulation/r-30-8.csv",DataFrame(r,:auto))
-        # CSV.write("simulation/r_d-30-8.csv",DataFrame(r_d,:auto))
-        # open("simulation/par-30-8.txt","w") do f
-        #     write(f, join(par," "))
-        # end
+        CSV.write("simulation/r-27-11-stat.csv",DataFrame(r,:auto))
+        CSV.write("simulation/r_d-27-11-stat.csv",DataFrame(r_d,:auto))
+        open("simulation/par-27-11-stat.txt","w") do f
+            write(f, join(par," "))
+        end
         Plots.histogram(sum(r_d,dims=2),bins=17,legends=false)
         Plots.plot(RenewalInference.modelhz(sum(r_d,dims=1)',N),ylims=(0,1))
         mean(r,dims=1)
@@ -75,13 +78,44 @@
             renewals
         )
         sim = Sim(T,S)
-        
-        f(x) = fval([.85, 10, first(x), .95, 2, 2, .7, 3, 2, 50, 150],md,sim)
+
+        # r1,r_d1 = simulate([.85, 1000., .85, .95, 2, 2, .7, 3, 2, 500, 1500],md,sim)
+        # hz1 = RenewalInference.modelhz(sum(r_d1,dims=1)',1000*1000)
+        # r2,r_d2 = simulate([.85, 900., .85, .95, 2, 2, .7, 3, 2, 500, 1500],md,sim)
+        # hz2 = RenewalInference.modelhz(sum(r_d2,dims=1)',1000*1000)
+        # r3,r_d3 = simulate([.85, 1050, .85, .95, 2, 2, .7, 3, 2, 500, 1500],md,sim)
+        # hz3 = RenewalInference.modelhz(sum(r_d3,dims=1)',1000*1000)
+        # Plots.plot(hz1)
+        # Plots.plot!(hz2)
+        # Plots.plot!(hz3)
+
+        neg_par = parse.(Float64, split(readlines("C:/Users/Santeri/Desktop/Patent playground/gradu-plot-data/neg-par.txt")[1], " "))
+        # f(x) = fval(x,md,sim)
+        # delta, sigma, mu, mu_1
+        # [1, 0., .85, 1, 1.5, 1.5, 1.7, 0]
+        # [.85, 1.5, 1.5, 1.7]
+        # f(x) = fval2([1, 0., x[1], 1, x[2], x[3], x[4], 0],md,sim)
+        f(x) = fval2(x,md,sim)
         # lb = [0, 0,     0, 0, 0,    0,      -Inf,   -Inf,   -Inf,   -Inf,   -Inf]
         # ub = [1, Inf,   1, 1, Inf,  Inf,    Inf,    Inf,    Inf,    Inf,    Inf]
-        lb = [0.]
-        ub = [1.]
-        optimize_n(f, [Uniform()], 25,lb,ub,options=Optim.Options(time_limit=3*(60*60),extended_trace=true))
+        lb = [0.,0,0,0,0,0,-Inf,-Inf,-Inf]
+        ub = [1.,1,1,1,Inf,Inf,Inf,Inf,Inf]
+        # [.85, .5, .85, .9, 1., 1., 1.2, 500, 1500]
+        optimize_n(
+            f, 
+            # [Uniform()], 
+            [Uniform(),Uniform(),Uniform(),Uniform(),Uniform(1,2),Uniform(1,2),Normal(1,1),Normal(500,50),Normal(1500,150)],
+            25,
+            lb,
+            ub,
+            options=Optim.Options(
+                time_limit=3*(60*60),
+                store_trace=true,
+                extended_trace=true,
+                callback=g_tol_break,
+                g_tol=1e-5
+            )
+        )
 
 
         
