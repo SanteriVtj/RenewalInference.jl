@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/SanteriVtj/RenewalInference.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/SanteriVtj/RenewalInference.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 
-Model for doing patent value evaluation from renewal data. Model is partly based on <a href="https://doi.org/10.1111/1467-937X.00064" title="Patent Protection in the Shadow of Infringement: Simulation Estimations of Patent Value">Lanjouw 1998</a>.
+Model for doing patent value evaluation from renewal data. Model is based on the work of <a href="https://www.jstor.org/stable/1912835" title="Patents as Options: Some Estimates of the Value of Holding European Patent Stocks">Pakes 1986</a>,<a href="https://doi.org/10.1111/1467-937X.00064" title="Patent Protection in the Shadow of Infringement: Simulation Estimations of Patent Value">Lanjouw 1998</a> and <a href="https://finna.fi/Record/fikka.5627560?sid=3819717581&lng=en-gb" title="Essays on the economics of patent rights : measuring the value of patents using renewal information"> Stevenson 2022</a>.
 
 ## Running a simulation
 
